@@ -32,6 +32,8 @@ const client = new MongoClient(uri, {
 
 
 server.get("/algebra1", algebra1)
+server.get("/all", all)
+
 
 async function algebra1(req, res) {
   console.log("Fetching algebra 1");
@@ -55,6 +57,31 @@ async function fetchAlgebra1(client) {
     console.log("no listing");
   }
 }
+
+async function all(req, res) {
+  console.log("Fetching algebra 1");
+
+  try{
+    const result = await fetchAll(client);
+    console.log(result);
+    res.json(result);
+  } catch(e) {
+    console.log("Algebra fetch error: ", e);
+  }
+}
+
+async function fetchAll(client) {
+
+  const cursor = await client.db("m2m_math_db").collection("questions").find();
+  const result = await cursor.toArray();
+
+  if (result != 0) {
+    return result;
+  } else {
+    console.log("no listings");
+  }
+}
+
 
 async function serverStart() {
   try{
