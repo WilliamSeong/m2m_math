@@ -6,7 +6,7 @@ export default function App() {
 
     async function fetchData() {
 
-      const response = await fetch("http://localhost:3000/test");
+      const response = await fetch("http://localhost:3000/algebra1");
       
       const data = await response.json();
 
