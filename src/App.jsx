@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import Student from "./components/StudentDetails.jsx";
+
 
 // interface Question{
 //     objective : String;
@@ -12,34 +14,25 @@ export default function App() {
 
     // const [question, setQuestion] = useState<Question>(null);
     const [questions, setQuestions] = useState(null);
+    const [students, setStudents] = useState([]);
 
     useEffect(() => {
 
-    //     async function fetchData() {
+        async function fetchData() {
 
-    //     const response = await fetch("http://localhost:3000/algebra1");
-      
-    //     const data = await response.json();
+            const response = await fetch("http://localhost:3000/students");
 
-    //     console.log(data);
-    // };
+            const data = await response.json();
 
+            console.log(data);
+        };
 
-    // fetchData();
-  })
+    fetchData();
 
-    async function fetchQuestion() {
-        const response = await fetch("http://localhost:3000/algebra1");
-            
-        const data = await response.json();
-
-        setQuestions(data);
-
-        console.log(data);
-    }
+    })
 
     async function fetchAllQuestions() {
-        const response = await fetch("http://localhost:3000/all");
+        const response = await fetch("http://localhost:3000/random5");
             
         const data = await response.json();
 
@@ -47,19 +40,21 @@ export default function App() {
 
         console.log(data);
     }
+
 
     return (
         <div>
-            {questions ? (
+            {students ? (
                 <div>
-                    {questions.map((question, index) => (
-                        <p>
-                            {index + 1}. {question.question}
-                        </p>
+                    {students.map((student, index) => (
+                        <div key={index}>
+                            <h1>Student.name</h1>
+                        </div>
                     ))}
                 </div>
             ) : <p>Loading...</p>}
             <button onClick={fetchAllQuestions}> Get Questions </button>
+            <Student />
         </div>
     )
 }
