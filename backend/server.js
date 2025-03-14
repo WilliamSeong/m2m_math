@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { MongoClient, ServerApiVersion, ObjectId } from "mongodb";
+import PDFDocument from "pdfkit";
 
 const server = express();
 const port = 3000;
@@ -39,8 +40,10 @@ server.get("/all", all)
 server.get("/random5", random5);
 server.get("/students", students);
 server.post("/student/details", studentDetails);
+server.post("/generate", generateQuestions);
+server.get("/pdf", testPDF);
 
-
+// Fetch one question
 async function algebra1(req, res) {
     console.log("Fetching algebra 1");
 
@@ -64,6 +67,7 @@ async function fetchAlgebra1(client) {
     }
 }
 
+// Fetch all questions
 async function all(req, res) {
     console.log("Fetching algebra 1");
 
@@ -87,16 +91,7 @@ async function fetchAll(client) {
     }
 }
 
-async function random5(req, res) {
-    try {
-        const result = await fetchRandomFive(client, "multiply integers");
-        console.log(result);
-        res.json(result);
-    } catch(e) {
-        console.log("Error: ", e);
-    }
-}
-
+// Fetch all students
 async function students(req, res) {
     console.log("Fetching student");
     try {
@@ -115,31 +110,65 @@ async function fetchStudents(client) {
     return result;
 }
 
+// Fetch details of one student using studentId
 async function studentDetails(req, res) {
     console.log("Fetching student details");
     const { studentId } = req.body;
-
-    console.log("Getting details for student id: ", studentId);
     try {
         const result = await fetchStudentDetails(client, studentId);
 
-        console.log("Student details are: ", result);
+        // console.log("Student details are: ", result);
 
         res.json(result);
     } catch(e) {
         console.log("Student details fetching error: ", e);
     }
-
 }
 
 async function fetchStudentDetails(client, studentId) {
     const result = await client.db("m2m_math_db").collection("students").findOne({_id : ObjectId.createFromHexString(studentId)});
-
     return result;
 }
 
+// Generate questions using a list of objectives (5 each, for now)
+
+async function generateQuestions(req, res) {
+    const { objectiveList } = req.body;
+
+    console.log(objectiveList);
+
+    try {
+        const result = await generateRandomQuestions(client, objectiveList);
+
+        console.log("these are the generated questions", result);
+        res.json(result);
+    } catch(e) {
+        console.log("Generate error :", e);
+    }
+}
+
+async function generateRandomQuestions(client, objectives) {
+    let generatedQuestions = [];
+    for (const obj of objectives) {
+        generatedQuestions = [...generatedQuestions, ...await fetchRandomFive(client, obj)]
+    }
+
+    return generatedQuestions;
+}
+
+// Fetch 5 random questions from an objective
+async function random5(req, res) {
+    try {
+        const result = await fetchRandomFive(client, "multiply integers");
+        console.log(result);
+        res.json(result);
+    } catch(e) {
+        console.log("Error: ", e);
+    }
+}
+
 async function fetchRandomFive(client, objective) {
-    const result = await client.db("m2m_math_db").collection("objectives").findOne({name : objective});
+    const result = await client.db("m2m_math_db").collection("objectives").findOne({_id : ObjectId.createFromHexString(objective)});
     // const result = await cursor.toArray();
     let randomFive = [];
     if (result.questions && result.questions) {
@@ -147,15 +176,29 @@ async function fetchRandomFive(client, objective) {
         const shuffled = result.questions.sort(() => 0.5 - Math.random());
         randomFive = shuffled.slice(0, 5);
     }
-    console.log(randomFive);
+    // console.log(randomFive);
 
     const cursor = await client.db("m2m_math_db").collection("questions").find({_id : {$in: randomFive}})
     const result2 = await cursor.toArray();
 
-    console.log(result2);
+    // console.log(result2);
     return result2;
 }
 
+async function testPDF(req, res) {
+
+    // Set response headers
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=output.pdf");
+
+    const doc = new PDFDocument();
+    doc.pipe(res);
+    doc.text("Hello, World!");
+    doc.end();
+}
+
+
+// Sort questions into objective's questions array
 async function sort(client) {
     const cursor = await client.db("m2m_math_db").collection("questions").find();
     const result = await cursor.toArray();
