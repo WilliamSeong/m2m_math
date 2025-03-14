@@ -15,6 +15,7 @@ export default function App() {
     // const [question, setQuestion] = useState<Question>(null);
     const [questions, setQuestions] = useState(null);
     const [students, setStudents] = useState([]);
+    const [currentStudent, setCurrentStudent] = useState(null);
 
     useEffect(() => {
 
@@ -25,11 +26,13 @@ export default function App() {
             const data = await response.json();
 
             console.log(data);
+
+            setStudents(data);
         };
 
     fetchData();
 
-    })
+    }, []);
 
     async function fetchAllQuestions() {
         const response = await fetch("http://localhost:3000/random5");
@@ -41,6 +44,21 @@ export default function App() {
         console.log(data);
     }
 
+    async function handleCurrentStudent(currentStudentId) {
+        const response = await fetch("http://localhost:3000/student/details", {
+            method : "POST",
+            headers : {
+                "Content-Type" : "application/json",
+            },
+            body : JSON.stringify({
+                studentId : currentStudentId
+            })
+    });
+
+        const data = await response.json();
+
+        setCurrentStudent(data);
+    }
 
     return (
         <div>
@@ -48,13 +66,19 @@ export default function App() {
                 <div>
                     {students.map((student, index) => (
                         <div key={index}>
-                            <h1>Student.name</h1>
+                            <h1>{student.name}</h1>
+                            <p>{student.objectives_inprogress}</p>
+                            <button onClick={() => {handleCurrentStudent(student._id)}}>{student.name} details</button>
                         </div>
                     ))}
                 </div>
             ) : <p>Loading...</p>}
-            <button onClick={fetchAllQuestions}> Get Questions </button>
-            <Student />
+            {currentStudent ? (
+                <h1>{currentStudent.objectives_inprogress}</h1>
+            ): (
+                <h1></h1>
+            )
+            }
         </div>
     )
 }

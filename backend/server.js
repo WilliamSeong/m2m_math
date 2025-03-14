@@ -1,8 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { MongoClient, ServerApiVersion } from "mongodb";
-import { PDFDocument } from "pdfkit";
+import { MongoClient, ServerApiVersion, ObjectId } from "mongodb";
 
 const server = express();
 const port = 3000;
@@ -39,6 +38,7 @@ server.get("/algebra1", algebra1)
 server.get("/all", all)
 server.get("/random5", random5);
 server.get("/students", students);
+server.post("/student/details", studentDetails);
 
 
 async function algebra1(req, res) {
@@ -97,8 +97,45 @@ async function random5(req, res) {
     }
 }
 
-async function students() {
-    const result = await client.db("m2m_math_db").collection("students").find()
+async function students(req, res) {
+    console.log("Fetching student");
+    try {
+        const result = await fetchStudents(client);
+
+        res.json(result);
+    } catch(e) {
+        console.log("Student fetching error: ", e);
+    }
+}
+
+async function fetchStudents(client) {
+    const cursor = await client.db("m2m_math_db").collection("students").find();
+    const result = cursor.toArray();
+
+    return result;
+}
+
+async function studentDetails(req, res) {
+    console.log("Fetching student details");
+    const { studentId } = req.body;
+
+    console.log("Getting details for student id: ", studentId);
+    try {
+        const result = await fetchStudentDetails(client, studentId);
+
+        console.log("Student details are: ", result);
+
+        res.json(result);
+    } catch(e) {
+        console.log("Student details fetching error: ", e);
+    }
+
+}
+
+async function fetchStudentDetails(client, studentId) {
+    const result = await client.db("m2m_math_db").collection("students").findOne({_id : ObjectId.createFromHexString(studentId)});
+
+    return result;
 }
 
 async function fetchRandomFive(client, objective) {
@@ -130,9 +167,6 @@ async function sort(client) {
         const response = await client.db("m2m_math_db").collection("objectives").updateOne({_id : question.objective_id}, { $addToSet: {questions : question._id}})
     }
 }
-
-
-
 
 async function serverStart() {
     try{
