@@ -117,9 +117,11 @@ async function studentDetails(req, res) {
     try {
         const result = await fetchStudentDetails(client, studentId);
 
-        // console.log("Student details are: ", result);
+        const packets = await fetchStudentPackets(client, studentId);
 
-        res.json(result);
+        // console.log("This student's packets: ", packets);
+
+        res.json({result : result, packets : packets});
     } catch(e) {
         console.log("Student details fetching error: ", e);
     }
@@ -130,21 +132,58 @@ async function fetchStudentDetails(client, studentId) {
     return result;
 }
 
+async function fetchStudentPackets(client, student) {
+
+    console.log("Checking packets for student id: ", student);
+
+    const cursor = await client.db("m2m_math_db").collection("packets").find({student_id : ObjectId.createFromHexString(student)});
+    const packets = await cursor.toArray();
+
+    return packets;
+}
+
 // Generate questions using a list of objectives (5 each, for now)
 
 async function generateQuestions(req, res) {
-    const { objectiveList } = req.body;
+    const { objectiveList, studentId } = req.body;
 
-    console.log(objectiveList);
+    console.log(objectiveList, studentId);
 
     try {
         const result = await generateRandomQuestions(client, objectiveList);
 
-        console.log("these are the generated questions", result);
-        res.json(result);
+        // console.log("these are the generated questions", result);
+
+        const doc = new PDFDocument();
+
+        const buffer = [];
+
+        doc.on("data", buffer.push.bind(buffer));
+        doc.on("end", async () => {
+            const pdfData = Buffer.concat(buffer);
+
+            await createPacket(client, pdfData, studentId);
+
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", "inline; filename=output.pdf");
+            res.end(pdfData);
+        })
+
+        for (const question of result) {
+            doc.text(question.question);
+        }
+        doc.end();
+
     } catch(e) {
         console.log("Generate error :", e);
     }
+}
+
+async function createPacket(client, packet, student) {
+    console.log("Creating packet");
+    const response = await client.db("m2m_math_db").collection("packets").insertOne({ content : packet, student_id : ObjectId.createFromHexString(student), date_created : new Date()});
+    const packetId = response.insertedId;
+    await client.db("m2m_math_db").collection("students").updateOne({ _id : ObjectId.createFromHexString(student)}, {$push : {packets_inprogress : packetId}});
 }
 
 async function generateRandomQuestions(client, objectives) {

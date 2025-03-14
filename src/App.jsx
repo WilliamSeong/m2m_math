@@ -17,6 +17,7 @@ export default function App() {
     const [students, setStudents] = useState([]);
     const [currentStudent, setCurrentStudent] = useState(null);
     const [currentObjectives, setCurrentObjectives] = useState([]);
+    const [currentPackets, setCurrentPackets] = useState([]);
     const [pdfUrls, setPdfUrls] = useState();
 
     useEffect(() => {
@@ -59,7 +60,28 @@ export default function App() {
 
         const data = await response.json();
 
-        setCurrentStudent(data);
+        const { result, packets } = data;
+
+        let urls = [];
+
+        for (const packet of packets ) {
+            const base64Data = packet.content;
+            const binaryString = atob(base64Data);
+            
+            // Create an array buffer from the binary string
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // Create a blob from the array buffer
+            const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
+
+            const url = URL.createObjectURL(pdfBlob);
+            urls = [...urls, url];
+        }
+        setCurrentStudent(result);
+        setCurrentPackets(urls);
     }
 
     async function handleObjectiveCheckbox() {
@@ -80,13 +102,14 @@ export default function App() {
                 "Content-Type" : "application/json"
             },
             body : JSON.stringify({
-                objectiveList : currentObjectives
+                objectiveList : currentObjectives,
+                studentId : currentStudent._id,
             })
         })
 
-        const data = await response.json();
-        const shuffled = data.sort(() => 0.5 - Math.random());
-        setQuestions(shuffled);
+        const pdfBlob = await response.blob();
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        setQuestions(pdfUrl);
     }
 
     async function testPDF() {
@@ -125,22 +148,18 @@ export default function App() {
 
                     <button onClick={generatePacket}>Generate Packet</button>
                     {questions ? (
-                        <div>
-                            {questions.map((question, index) => (
-                                <div key={index}>
-                                    <h1>{question.question}</h1>
-                                </div>
-                            ))}
-                        </div>
+                        <a href={questions} target="_blank">Packet</a>
                     ) : (
                         <h1></h1>
                     )}
+
+                    {currentPackets.map((url, index) => (
+                        <div key={index}><a href={url} target="_blank">Packet {index}</a></div>
+                    ))}
                 </div>
             ): (
                 <h1></h1>
             )}
-            <button onClick={testPDF}>Test PDF</button>
-            {pdfUrls ? (<a href={pdfUrls} target="_blank">test link</a>) : (<h1></h1>)}
         </div>
     )
 }
