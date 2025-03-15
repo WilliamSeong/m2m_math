@@ -34,7 +34,6 @@ const client = new MongoClient(uri, {
     }
 });
 
-
 server.get("/algebra1", algebra1)
 server.get("/all", all)
 server.get("/random5", random5);
@@ -169,6 +168,10 @@ async function generateQuestions(req, res) {
             res.end(pdfData);
         })
 
+        for (const obj of objectiveList) {
+            doc.text(obj.name);
+        }
+
         for (const question of result) {
             doc.text(question.question);
         }
@@ -177,6 +180,10 @@ async function generateQuestions(req, res) {
     } catch(e) {
         console.log("Generate error :", e);
     }
+}
+
+async function editPdf(question, doc) {
+    
 }
 
 async function createPacket(client, packet, student) {
@@ -189,7 +196,8 @@ async function createPacket(client, packet, student) {
 async function generateRandomQuestions(client, objectives) {
     let generatedQuestions = [];
     for (const obj of objectives) {
-        generatedQuestions = [...generatedQuestions, ...await fetchRandomFive(client, obj)]
+        console.log("generating questions for: ", obj.name);
+        generatedQuestions = [...generatedQuestions, ...await fetchRandomFive(client, obj.id)]
     }
 
     return generatedQuestions;
@@ -207,6 +215,7 @@ async function random5(req, res) {
 }
 
 async function fetchRandomFive(client, objective) {
+    console.log("creating questions for: ", objective);
     const result = await client.db("m2m_math_db").collection("objectives").findOne({_id : ObjectId.createFromHexString(objective)});
     // const result = await cursor.toArray();
     let randomFive = [];

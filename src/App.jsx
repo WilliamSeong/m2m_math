@@ -68,13 +68,11 @@ export default function App() {
             const base64Data = packet.content;
             const binaryString = atob(base64Data);
             
-            // Create an array buffer from the binary string
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
 
-            // Create a blob from the array buffer
             const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
 
             const url = URL.createObjectURL(pdfBlob);
@@ -87,7 +85,10 @@ export default function App() {
     async function handleObjectiveCheckbox() {
         const checkedBoxes = document.querySelectorAll('.objective-checkboxes:checked');
     
-        const selectedObjectives = Array.from(checkedBoxes).map(box => box.value);
+        const selectedObjectives = Array.from(checkedBoxes).map(box => {
+            const index = parseInt(box.id.split('-')[1]);
+            return currentStudent.objectives_inprogress[index];
+        });
         
         setCurrentObjectives(selectedObjectives);
         console.log("Selected objectives:", selectedObjectives);
@@ -141,8 +142,9 @@ export default function App() {
                 <div>
                     {currentStudent.objectives_inprogress.map((obj, index) => (
                         <div key={index}>
+                            {console.log(obj)}
                             <input className="objective-checkboxes" type="checkbox" value={obj} id={`objective-${index}`} onChange={handleObjectiveCheckbox}/>
-                            <label htmlFor={`objective-${index}`}>{obj}</label>
+                            <label htmlFor={`objective-${index}`}>{obj.name}</label>
                         </div>
                     ))}
 
@@ -150,15 +152,14 @@ export default function App() {
                     {questions ? (
                         <a href={questions} target="_blank">Packet</a>
                     ) : (
-                        <h1></h1>
+                        <></>
                     )}
-
                     {currentPackets.map((url, index) => (
                         <div key={index}><a href={url} target="_blank">Packet {index}</a></div>
                     ))}
                 </div>
             ): (
-                <h1></h1>
+                <></>
             )}
         </div>
     )
