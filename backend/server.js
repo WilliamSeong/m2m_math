@@ -172,9 +172,8 @@ async function generateQuestions(req, res) {
             doc.text(obj.name);
         }
 
-        for (const question of result) {
-            doc.text(question.question);
-        }
+        await editPdf(result, doc);
+
         doc.end();
 
     } catch(e) {
@@ -182,8 +181,13 @@ async function generateQuestions(req, res) {
     }
 }
 
-async function editPdf(question, doc) {
-    
+async function editPdf(questions, doc) {
+
+    for (const question of questions) {
+        console.log(question.question);
+        doc.text(`${question.question}`);
+        doc.text(`[A]${question.answers[0]} [B]${question.answers[1]} [C]${question.answers[2]} [D]${question.answers[3]}`);
+    }
 }
 
 async function createPacket(client, packet, student) {
