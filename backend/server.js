@@ -40,6 +40,7 @@ server.get("/random5", random5);
 server.get("/students", students);
 server.post("/student/details", studentDetails);
 server.post("/generate", generateQuestions);
+server.post("/generate/2", generateQuestions2);
 server.get("/pdf", testPDF);
 server.get("/testQuestion", testQuestion);
 
@@ -193,7 +194,111 @@ async function generateQuestions2(req, res) {
 
     console.log(objectiveList, studentId);
 
+    try {
+        const result = await generateTemplateQuestions(client, objectiveList, studentId);
+
+        console.log("all questions: ", result);
+
+        const doc = new PDFDocument();
+
+        const buffer = [];
+
+        doc.on("data", buffer.push.bind(buffer));
+        doc.on("end", async () => {
+            const pdfData = Buffer.concat(buffer);
+
+            await createPacket(client, pdfData, studentId);
+
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", "inline; filename=output.pdf");
+            res.end(pdfData);
+        })
+
+        for (const obj of objectiveList) {
+            doc.text(obj.name);
+        }
+
+        await editPdf(result, doc);
+
+        doc.end();
+
+    } catch(e) {
+        console.log("Generating template questions error: ", e);
+    }
+}
+
+async function generateTemplateQuestions(client, objectives, student) {
+    // console.log("Generating questions for objectives: ", objectives, " for student id ", student);
+
+    let allQuestions = []
+
+    for (const obj of objectives) {
+        // console.log(obj.id);
+        const result = await client.db("m2m_math_db").collection("questions").findOne({objective_id : ObjectId.createFromHexString(obj.id)});
+        // console.log(result);
+        allQuestions = allQuestions.concat(await generateNTemplateQuestions(result, 3));
+    }
+
+    console.log(allQuestions);
+    return allQuestions;
+}
+
+async function generateNTemplateQuestions(template, n) {
+    let question = template.template;
+    let solution = template.correct_answer;
+    let answers = template.answers.slice();
+
+    let problems = [];
+
+    for (let i = 0; i < n; i++) {
+        
+        // console.log("Question template: ", question);
+        // console.log("Question solution: ", solution);
+        // console.log("Question answers: ", answers);    
+
+        let values = {};
+        for (const [varName, constraints] of Object.entries(template.variables)) {
+            values[varName] = Math.floor(Math.random() * (constraints.max - constraints.min + 1) + constraints.min);
+        }
     
+        for (const [varName, value] of Object.entries(values)) {
+            // console.log("replacing values:", varName);
+            const regex = new RegExp(`{{${varName}}}`, 'g');
+            
+            question = question.replace(regex, value);
+    
+            solution = solution.replace(regex, value);
+    
+            for (const [index, ans] of answers.entries()) {
+                // console.log("This is ans: ", ans);
+                answers[index] = ans.replace(regex, value);
+            }
+            // console.log(answers);
+        }
+    
+        solution = eval(solution);
+        for (const [index, ans] of answers.entries()) {
+            answers[index] = eval(ans);
+        }
+    
+        // console.log(values);
+        // console.log("Original: ", template.template);
+        // console.log(question);
+        // console.log("Original: ", template.correct_answer);
+        // console.log(solution);
+        // console.log("Original: ", template.answers);
+        // console.log(answers);
+
+        problems.push({question : question, solution : solution, answers : answers});
+
+        question = template.template;
+        solution = template.correct_answer;
+        answers = template.answers.slice();
+
+    }
+
+    console.log("problems: ", problems);
+    return problems;
 }
 
 // Generate questions using a list of objectives (5 each, for now)
@@ -236,6 +341,9 @@ async function generateQuestions(req, res) {
 }
 
 async function editPdf(questions, doc) {
+
+    console.log("questions in editPDF: ", questions);
+    console.log("question in editPDF: ", questions[0]);
 
     for (const question of questions) {
         console.log(question.question);
@@ -329,5 +437,5 @@ async function serverStart() {
 }
 
 serverStart();
-sort(client);
+// sort(client);
 // fetchRandomFive(client, "multiply integers");

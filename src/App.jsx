@@ -91,7 +91,7 @@ export default function App() {
         });
         
         setCurrentObjectives(selectedObjectives);
-        console.log("Selected objectives:", selectedObjectives);
+        // console.log("Selected objectives:", selectedObjectives);
     }
 
     async function generatePacket() {
@@ -111,6 +111,25 @@ export default function App() {
         const pdfBlob = await response.blob();
         const pdfUrl = URL.createObjectURL(pdfBlob);
         setQuestions(pdfUrl);
+    }
+
+    async function generateTemplatePacket() {
+        console.log("These are the objectives set for generation: ", currentObjectives);
+        const response = await fetch("http://localhost:3000/generate/2", {
+            method : "POST",
+            headers : {
+                "Content-Type" : "application/json"
+            },
+            body : JSON.stringify({
+                objectiveList : currentObjectives,
+                studentId : currentStudent._id,
+            })
+        })
+
+        const pdfBlob = await response.blob();
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        setQuestions(pdfUrl);
+
     }
 
     async function testPDF() {
@@ -150,13 +169,14 @@ export default function App() {
                 <div>
                     {currentStudent.objectives_inprogress.map((obj, index) => (
                         <div key={index}>
-                            {console.log(obj)}
+                            {/* {console.log(obj)} */}
                             <input className="objective-checkboxes" type="checkbox" value={obj} id={`objective-${index}`} onChange={handleObjectiveCheckbox}/>
                             <label htmlFor={`objective-${index}`}>{obj.name}</label>
                         </div>
                     ))}
 
                     <button onClick={generatePacket}>Generate Packet</button>
+                    <button onClick={generateTemplatePacket}>Generate Template</button>
                     {questions ? (
                         <a href={questions} target="_blank">Packet</a>
                     ) : (
