@@ -125,6 +125,14 @@ export default function App() {
         setPdfUrls(pdfUrl);
     }
 
+    async function testButton() {
+        const response = await fetch("http://localhost:3000/testQuestion");
+
+        const data = await response.json();
+
+        console.log(data);
+    }
+
     return (
         <div>
             {students ? (
@@ -161,6 +169,7 @@ export default function App() {
             ): (
                 <></>
             )}
+            <button onClick={testButton}>Test</button>
         </div>
     )
 }

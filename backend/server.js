@@ -41,6 +41,52 @@ server.get("/students", students);
 server.post("/student/details", studentDetails);
 server.post("/generate", generateQuestions);
 server.get("/pdf", testPDF);
+server.get("/testQuestion", testQuestion);
+
+// Test Question template
+async function testQuestion(req, res) {
+    const result = await client.db("m2m_math_db").collection("questions").findOne({_id : ObjectId.createFromHexString("67d6b0612287127370962298")})
+    // console.log(result);
+    
+    let question = result.template;
+    let answers = result.answers;
+    let solution = result.correct_answer;
+
+    // console.log(problem);
+    // console.log(solution);
+    // console.log(answers);
+
+
+    const values = {};
+    for (const [varName, constraints] of Object.entries(result.variables)) {
+        values[varName] = Math.floor(Math.random() * (constraints.max - constraints.min + 1) + constraints.min);
+    }
+
+    for (const [varName, value] of Object.entries(values)) {
+        const regex = new RegExp(`{{${varName}}}`, 'g');
+        
+        question = question.replace(regex, value);
+
+        solution = solution.replace(regex, value);
+
+        for (const [index, ans] of answers.entries()) {
+            answers[index] = ans.replace(regex, value);
+        }
+    }
+
+    solution = eval(solution);
+    for (const [index, ans] of answers.entries()) {
+        answers[index] = eval(ans);
+    }
+
+
+    console.log(values);
+    console.log(question);
+    console.log(solution);
+    console.log(answers);
+
+    res.json(values);
+}
 
 // Fetch one question
 async function algebra1(req, res) {
@@ -141,8 +187,16 @@ async function fetchStudentPackets(client, student) {
     return packets;
 }
 
-// Generate questions using a list of objectives (5 each, for now)
+// Generate questions using the template
+async function generateQuestions2(req, res) {
+    const { objectiveList, studentId } = req.body;
 
+    console.log(objectiveList, studentId);
+
+    
+}
+
+// Generate questions using a list of objectives (5 each, for now)
 async function generateQuestions(req, res) {
     const { objectiveList, studentId } = req.body;
 
@@ -203,7 +257,6 @@ async function generateRandomQuestions(client, objectives) {
         console.log("generating questions for: ", obj.name);
         generatedQuestions = [...generatedQuestions, ...await fetchRandomFive(client, obj.id)]
     }
-
     return generatedQuestions;
 }
 
@@ -276,5 +329,5 @@ async function serverStart() {
 }
 
 serverStart();
-// sort(client);
+sort(client);
 // fetchRandomFive(client, "multiply integers");
