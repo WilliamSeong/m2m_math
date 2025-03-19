@@ -197,7 +197,7 @@ async function generateQuestions2(req, res) {
     try {
         const result = await generateTemplateQuestions(client, objectiveList, studentId);
 
-        console.log("all questions: ", result);
+        // console.log("all questions: ", result);
 
         const doc = new PDFDocument();
 
@@ -236,10 +236,10 @@ async function generateTemplateQuestions(client, objectives, student) {
         // console.log(obj.id);
         const result = await client.db("m2m_math_db").collection("questions").findOne({objective_id : ObjectId.createFromHexString(obj.id)});
         // console.log(result);
-        allQuestions = allQuestions.concat(await generateNTemplateQuestions(result, 3));
+        allQuestions = allQuestions.concat(await generateNTemplateQuestions(result, 5));
     }
 
-    console.log(allQuestions);
+    // console.log(allQuestions);
     return allQuestions;
 }
 
@@ -258,7 +258,13 @@ async function generateNTemplateQuestions(template, n) {
 
         let values = {};
         for (const [varName, constraints] of Object.entries(template.variables)) {
-            values[varName] = Math.floor(Math.random() * (constraints.max - constraints.min + 1) + constraints.min);
+            if (constraints.min === 0) {
+                values[varName] = Math.floor(Math.random() * constraints.max) + 1;
+            } else {
+                // Original calculation works fine if min is already > 0
+                values[varName] = Math.floor(Math.random() * (constraints.max - constraints.min + 1) + constraints.min);
+            }
+        
         }
     
         for (const [varName, value] of Object.entries(values)) {
@@ -297,7 +303,7 @@ async function generateNTemplateQuestions(template, n) {
 
     }
 
-    console.log("problems: ", problems);
+    // console.log("problems: ", problems);
     return problems;
 }
 
@@ -342,11 +348,11 @@ async function generateQuestions(req, res) {
 
 async function editPdf(questions, doc) {
 
-    console.log("questions in editPDF: ", questions);
-    console.log("question in editPDF: ", questions[0]);
+    // console.log("questions in editPDF: ", questions);
+    // console.log("question in editPDF: ", questions[0]);
 
     for (const question of questions) {
-        console.log(question.question);
+        // console.log(question.question);
         doc.text(`${question.question}`);
         doc.text(`[A]${question.answers[0]} [B]${question.answers[1]} [C]${question.answers[2]} [D]${question.answers[3]}`);
     }

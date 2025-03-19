@@ -129,7 +129,6 @@ export default function App() {
         const pdfBlob = await response.blob();
         const pdfUrl = URL.createObjectURL(pdfBlob);
         setQuestions(pdfUrl);
-
     }
 
     async function testPDF() {
