@@ -10,7 +10,7 @@ server.use(express.json());
 
 
 server.use(cors({
-    origin: 'http://localhost:5173',
+    origin: ['http://localhost:5173', 'http://localhost:8081'],
 }));
 
 
@@ -43,6 +43,14 @@ server.post("/generate", generateQuestions);
 server.post("/generate/2", generateQuestions2);
 server.get("/pdf", testPDF);
 server.get("/testQuestion", testQuestion);
+server.post("/camera", camera);
+
+async function camera(req, res) {
+
+    const { uri } = req.body;
+
+    console.log(uri);
+}
 
 // Test Question template
 async function testQuestion(req, res) {

@@ -2,9 +2,9 @@ import { Text, View, StyleSheet, Button, TouchableOpacity, Pressable } from "rea
 import { Image } from 'expo-image';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRef, useState } from 'react';
+import * as FileSystem from 'expo-file-system';
 
 export default function Index() {
-
     let cameraRef = useRef<CameraView>(null);
 
     const [facing, setFacing] = useState<CameraType>('back');
@@ -28,11 +28,27 @@ export default function Index() {
         setFacing(current => (current === 'back' ? 'front' : 'back'));
     }
 
-
     let takePic = async() => {
         const newPhoto = await cameraRef.current?.takePictureAsync();
         setPhoto(newPhoto?.uri);    
     }
+
+    const pushToMongo = async () => {
+        try{
+            console.log(photo);
+            const response = await fetch("http://localhost:3000/camera", {
+                method : "POST",
+                headers : {
+                    "Content-Type" : "application/json",
+                },
+                body : JSON.stringify({
+                    uri : photo
+                })
+            });
+        } catch(e) {
+            console.log("Fetch error: ", e);
+        }
+    };
 
     const renderImage = () => {
         return(
@@ -43,6 +59,7 @@ export default function Index() {
                     style={{ width: 300, aspectRatio: 1 }}
                 />
                 <Button onPress={() => setPhoto(undefined)} title="Take another picture" />
+                <Button onPress={pushToMongo} title="Send to Mongo" />
             </View>
         );
     };
@@ -59,9 +76,12 @@ export default function Index() {
                     backgroundColor: 'white',
                     paddingVertical: 12,
                     paddingHorizontal: 30,
-                    borderRadius: 30
-                }} >
-                    <Text>Take a Pic</Text>
+                    borderRadius: 30,
+                    bottom : 50,
+                    width : "25%",
+                    margin : 'auto'
+                }}>
+                    <Text>PIC</Text>
                 </Pressable>
             </CameraView>
         )
