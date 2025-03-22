@@ -1,0 +1,13 @@
+{
+    "name": "m2m-math-server",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "server.js",
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.7",
+        "express": "^4.18.2",
+        "mongodb": "^6.15.0",
+        "pdfkit": "^0.16.0"
+    }
+}
