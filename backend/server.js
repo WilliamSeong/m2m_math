@@ -24,7 +24,7 @@ const mongoUser = process.env.MONGODB_USER;
 const mongoPassword = process.env.MONGODB_PASSWORD;
 const uri = `mongodb+srv://${mongoUser}:${mongoPassword}@young-by-nail.vhysf.mongodb.net/?retryWrites=true&w=majority&appName=young-by-nail`;
 
-console.log(uri);
+// console.log(uri);
 
 const client = new MongoClient(uri, {
     serverApi: {
@@ -195,7 +195,7 @@ async function generateQuestions2(req, res) {
     console.log(objectiveList, studentId);
 
     try {
-        const result = await generateTemplateQuestions(client, objectiveList, studentId);
+        const result = await generateTemplateQuestions(client, objectiveList);
 
         // console.log("all questions: ", result);
 
@@ -227,7 +227,55 @@ async function generateQuestions2(req, res) {
     }
 }
 
-async function generateTemplateQuestions(client, objectives, student) {
+async function editPdf(questions, doc) {
+
+    // console.log("questions in editPDF: ", questions);
+    // console.log("question in editPDF: ", questions[0]);
+
+    const ansKey = [];
+
+    for (const q of questions) {
+        console.log(q);
+
+        const shuffledArray = shuffle(q.answers);
+        console.log(shuffledArray);
+
+        doc.text(`${q.question}`)
+        doc.text(`[A]${q.answers[0]} [B]${q.answers[1]} [C]${q.answers[2]} [D]${q.answers[3]}`);
+
+        for (const [index, ans] of shuffledArray.entries()) {
+            if (ans == q.solution){
+                console.log()
+                ansKey.push(index);
+            }
+        }
+
+        console.log("Current answer key: ", ansKey);
+    }
+    console.log("Complete answer key: ", ansKey);
+    doc.text(`Answer Key: ${ansKey}`);
+}
+
+function shuffle(array) {
+    let currentIndex = array.length;
+    let randomIndex;
+    // While there remain elements to shuffle
+    while (currentIndex != 0) {
+        // Pick a remaining element
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+
+        // And swap it with the current element
+        [array[currentIndex], array[randomIndex]] = 
+        [array[randomIndex], array[currentIndex]];
+    }
+
+    return array;
+}
+
+
+// Getting the template
+async function generateTemplateQuestions(client, objectives) {
     // console.log("Generating questions for objectives: ", objectives, " for student id ", student);
 
     let allQuestions = []
@@ -243,6 +291,7 @@ async function generateTemplateQuestions(client, objectives, student) {
     return allQuestions;
 }
 
+// Using the template and generating an question object consisting of the question, answer choices, and correct answer all as strings
 async function generateNTemplateQuestions(template, n) {
     let question = template.template;
     let solution = template.correct_answer;
@@ -272,6 +321,8 @@ async function generateNTemplateQuestions(template, n) {
             const regex = new RegExp(`{{${varName}}}`, 'g');
             
             question = question.replace(regex, value);
+
+            console.log(solution);
     
             solution = solution.replace(regex, value);
     
@@ -281,8 +332,11 @@ async function generateNTemplateQuestions(template, n) {
             }
             // console.log(answers);
         }
-    
+        
+        console.log(solution);
         solution = eval(solution);
+        console.log(solution);
+
         for (const [index, ans] of answers.entries()) {
             answers[index] = eval(ans);
         }
@@ -343,18 +397,6 @@ async function generateQuestions(req, res) {
 
     } catch(e) {
         console.log("Generate error :", e);
-    }
-}
-
-async function editPdf(questions, doc) {
-
-    // console.log("questions in editPDF: ", questions);
-    // console.log("question in editPDF: ", questions[0]);
-
-    for (const question of questions) {
-        // console.log(question.question);
-        doc.text(`${question.question}`);
-        doc.text(`[A]${question.answers[0]} [B]${question.answers[1]} [C]${question.answers[2]} [D]${question.answers[3]}`);
     }
 }
 

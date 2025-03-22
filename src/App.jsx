@@ -174,7 +174,7 @@ export default function App() {
                         </div>
                     ))}
 
-                    <button onClick={generatePacket}>Generate Packet</button>
+                    {/* <button onClick={generatePacket}>Generate Packet</button> */}
                     <button onClick={generateTemplatePacket}>Generate Template</button>
                     {questions ? (
                         <a href={questions} target="_blank">Packet</a>
