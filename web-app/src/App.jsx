@@ -143,7 +143,7 @@ export default function App() {
     }
 
     async function testButton() {
-        const response = await fetch("http://localhost:3000/testQuestion");
+        const response = await fetch("http://192.168.1.103:9050/db");
 
         const data = await response.json();
 

@@ -2,7 +2,9 @@ import { Text, View, StyleSheet, Button, TouchableOpacity, Pressable } from "rea
 import { Image } from 'expo-image';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRef, useState } from 'react';
+
 import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 export default function Index() {
     let cameraRef = useRef<CameraView>(null);
@@ -30,13 +32,34 @@ export default function Index() {
 
     let takePic = async() => {
         const newPhoto = await cameraRef.current?.takePictureAsync();
-        setPhoto(newPhoto?.uri);    
+
+        if (!newPhoto) return;
+
+        const manipulatedPhoto = await ImageManipulator.manipulateAsync(
+            newPhoto.uri,
+            [{ resize: { width: 512, height: 512 } }],  // Set your desired dimensions here
+            { format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
+        );
+    
+
+        let imageData;
+    
+        if (manipulatedPhoto?.uri.startsWith('file://')) {
+            // It's a file reference - convert to the actual base64 image
+            const base64 = await FileSystem.readAsStringAsync(manipulatedPhoto.uri, { encoding: FileSystem.EncodingType.Base64 });
+            imageData = `data:image/jpeg;base64,${base64}`;
+        } else {
+            // It's already a data URI
+            imageData = manipulatedPhoto?.uri;
+        }
+        
+        setPhoto(imageData);
     }
 
     const pushToMongo = async () => {
         try{
-            console.log(photo);
-            const response = await fetch("http://localhost:3000/camera", {
+            // console.log("Image uri: ", photo);
+            const response = await fetch("http://192.168.1.141:9050/camera", {
                 method : "POST",
                 headers : {
                     "Content-Type" : "application/json",
@@ -50,6 +73,23 @@ export default function Index() {
         }
     };
 
+    const process = async () => {
+        try{
+            const response = await fetch("http://192.168.1.141:9050/process", {
+                method : "POST",
+                headers : {
+                    "Content-Type" : "application/json",
+                },
+                body : JSON.stringify({
+                    uri : photo
+                })
+            });
+        } catch(e) {
+            console.log("Process error: ", e);
+        }
+
+    }
+
     const renderImage = () => {
         return(
             <View>
@@ -60,9 +100,20 @@ export default function Index() {
                 />
                 <Button onPress={() => setPhoto(undefined)} title="Take another picture" />
                 <Button onPress={pushToMongo} title="Send to Mongo" />
+                <Button onPress={process} title="Process" />
             </View>
         );
     };
+
+    const testServer = async() => {
+        try{
+            const response = await fetch("http://192.168.1.103:9050/test");
+            const data = await response.json();
+            console.log(data);
+        } catch(e) {
+            console.log("Flask server request error: ", e);
+        }
+    }
 
     const renderCamera = () => {
         return(
@@ -83,6 +134,15 @@ export default function Index() {
                 }}>
                     <Text>PIC</Text>
                 </Pressable>
+                <Pressable onPress={testServer} style={{
+                    backgroundColor: 'white',
+                    paddingVertical: 12,
+                    paddingHorizontal: 30,
+                    borderRadius: 30,
+                    bottom : 50,
+                    width : "25%",
+                    margin : 'auto'
+                }}><Text>Test Server</Text></Pressable>
             </CameraView>
         )
     };
