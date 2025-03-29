@@ -89,8 +89,8 @@ def process():
         if not image_uri:
             return jsonify({'error': 'No image URI provided'})
         
-        sheet(image_uri)
-        alignment(image_uri)
+        final, final_binary = sheet(image_uri)
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)})
     
@@ -171,25 +171,25 @@ def sheet(uri):
         # print("ordered corners: ", ordered_corners)
 
         # Get destination coordinates
-        (tl, tr, br, bl) = ordered_corners
-        print(tl, tr, br, bl)
-        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
-        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
-        maxWidth = max(int(widthA), int(widthB))
-        # print("maxWidth: ", maxWidth)
+        # (tl, tr, br, bl) = ordered_corners
+        # widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+        # widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+        # maxWidth = max(int(widthA), int(widthB))
 
-        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
-        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
-        maxHeight = max(int(heightA), int(heightB))
-        # print("maxHeight: ", maxHeight)
+        # heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+        # heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+        # maxHeight = max(int(heightA), int(heightB))
 
-        destination_corners = [[0,0], [maxWidth, 0], [maxWidth, maxHeight], [0,maxHeight]]
+        maxWidth = 600
+        maxHeight = 1600
+        minHeight = 1546
+
+        destination_corners = [[0,0], [maxWidth, 0], [maxWidth, maxHeight], [0,minHeight]]
 
         # print("Destination corners: ", destination_corners)
 
         M = cv.getPerspectiveTransform(np.float32(ordered_corners), np.float32(destination_corners))
         final = cv.warpPerspective(img, M, (destination_corners[2][0], destination_corners[2][1]), flags=cv.INTER_LINEAR)
-
         final_binary = cv.warpPerspective(binary, M, (destination_corners[2][0], destination_corners[2][1]), flags=cv.INTER_LINEAR)
 
         cv.imwrite("original_image_color.jpg", img)
@@ -201,7 +201,6 @@ def sheet(uri):
         cv.imwrite("final_image.jpg", final)
         cv.imwrite("final_binary_image.jpg", final_binary * 255)
 
-
         with open('image_final_binary.txt', 'w') as f:
             # For each row in the image
             for row in final_binary:
@@ -211,7 +210,7 @@ def sheet(uri):
                 f.write(row_str + '\n')
                 f.write('\n')
 
-        return jsonify({'success': True})
+        return final, final_binary
     else:
         return jsonify({'error': 'Unsupported URI format'})
 

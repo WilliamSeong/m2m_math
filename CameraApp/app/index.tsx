@@ -37,7 +37,7 @@ export default function Index() {
 
         const manipulatedPhoto = await ImageManipulator.manipulateAsync(
             newPhoto.uri,
-            [{ resize: { width: 1024, height: 1024 } }],  // Set your desired dimensions here
+            [{ resize: { width: 2000, height: 2000 } }],  // Set your desired dimensions here
             { format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
         );
     
@@ -59,7 +59,7 @@ export default function Index() {
     const pushToMongo = async () => {
         try{
             // console.log("Image uri: ", photo);
-            const response = await fetch("http://192.168.1.103:9050/camera", {
+            const response = await fetch("http://192.168.1.8:9050/camera", {
                 method : "POST",
                 headers : {
                     "Content-Type" : "application/json",
@@ -75,7 +75,7 @@ export default function Index() {
 
     const process = async () => {
         try{
-            const response = await fetch("http://192.168.1.103:9050/process", {
+            const response = await fetch("http://192.168.1.8:9050/process", {
                 method : "POST",
                 headers : {
                     "Content-Type" : "application/json",
