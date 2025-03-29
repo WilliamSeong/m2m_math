@@ -90,18 +90,108 @@ def process():
             return jsonify({'error': 'No image URI provided'})
         
         final, final_binary = sheet(image_uri)
+        # visualize_extraction_regions(final_binary)
+        answers = extract_answers(final_binary)
+        print("answers: ", answers)
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)})
-    
-def alignment(uri):
-    if (uri.startwith('data:image')):
 
-        return jsonify({'success' : True})
-    else:
-        return jsonify({'error' : 'Unsupported URI format'})
-
+# def visualize_extraction_regions(binary_image):
+#     # Make a copy of the image and convert to BGR so we can draw colored lines
+#     vis_img = cv.cvtColor(binary_image, cv.COLOR_GRAY2BGR)
     
+#     # Define the region we want to extract answers from
+#     y_start, y_end = 250, 1450
+#     x_start, x_end = 120, 340
+    
+#     # Draw a red rectangle around the answer region
+#     cv.rectangle(vis_img, (x_start, y_start), (x_end, y_end), (0, 0, 255), 2)
+    
+#     # Calculate row height (for 50 questions)
+#     num_questions = 50
+#     row_height = (y_end - y_start) // num_questions
+    
+#     # Draw horizontal lines for each row
+#     for i in range(1, num_questions):
+#         y = y_start + i * row_height
+#         cv.line(vis_img, (x_start, y), (x_end, y), (0, 0, 255), 1)
+    
+#     # Draw vertical lines to separate A, B, C, D, E columns
+#     option_width = (x_end - x_start) // 5
+#     for i in range(1, 5):
+#         x = x_start + i * option_width
+#         cv.line(vis_img, (x, y_start), (x, y_end), (0, 0, 255), 1)
+    
+#     cv.imwrite("answer_extraction.jpg", vis_img * 255)
+
+def extract_answers(final):
+    print("Extracting answers!")
+    # Load the pre-processed image
+    img = final
+    
+    # Define the region of answers (you might need to adjust these coordinates)
+    # This focuses on the answer bubbles region
+    answer_region = img[250:1450, 120:340]
+    
+    # Get number of rows (questions)
+    num_questions = 50  # Based on your form
+    
+    # Height of each row
+    row_height = answer_region.shape[0] // num_questions
+    
+    # Width of the answer region divided by 5 (A, B, C, D, E)
+    option_width = answer_region.shape[1] // 5
+    
+    answers = {}
+    options = ['A', 'B', 'C', 'D', 'E']
+    
+    for q in range(1, num_questions + 1):
+        if (q < 18):
+            print("Question ", q)
+        # Calculate the row position for this question
+        row_start = (q - 1) * row_height
+        row_end = row_start + row_height
+        
+        # Extract the row for this question
+        row = answer_region[row_start:row_end, :]
+        # print("question ", q, "row?: ", row)
+        
+        # For each option (A, B, C, D, E)
+        answer_averages = []
+        
+        for i in range(5):
+            # Calculate the column position for this option
+            col_start = i * option_width
+            col_end = col_start + option_width
+            
+            # Extract the bubble region
+            bubble = row[:, col_start:col_end]
+            
+            # Calculate the average pixel value (darker means filled)
+            avg_pixel = np.mean(bubble)
+            # if (q == 1 or q == 9 or q == 10):
+            #     print("Average of choice ", options[i], " is: ", avg_pixel)
+            answer_averages += [avg_pixel]
+            
+        # if (q < 18):
+        #     # print("Answer_average: ", answer_averages)
+        #     # print("Standard deviation: ", np.std(answer_averages))
+        #     # print("differences: ", np.abs(answer_averages-np.mean(answer_averages)))
+        #     print("significance?: ", np.where(np.abs(answer_averages - np.mean(answer_averages)) > np.std(answer_averages), 1, 0))
+        
+        significance = np.where(np.abs(answer_averages - np.mean(answer_averages)) > np.std(answer_averages), 1, 0)
+
+        if np.mean(significance) == .2:
+            for i in range(5):
+                if significance[i] == 1:
+                    answers[q] = options[i]
+        else:
+            answers[q] = options[4]
+    
+    return answers
+
+# Answer sheet isolating
 def sheet(uri):
     if uri.startswith('data:image'):
         # Extract the base64 data

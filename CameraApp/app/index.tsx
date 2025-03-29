@@ -37,7 +37,7 @@ export default function Index() {
 
         const manipulatedPhoto = await ImageManipulator.manipulateAsync(
             newPhoto.uri,
-            [{ resize: { width: 2000, height: 2000 } }],  // Set your desired dimensions here
+            [{ resize: { width: 2000, height: 2000 } }],
             { format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
         );
     
