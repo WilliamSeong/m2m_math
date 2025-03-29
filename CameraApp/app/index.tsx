@@ -37,7 +37,7 @@ export default function Index() {
 
         const manipulatedPhoto = await ImageManipulator.manipulateAsync(
             newPhoto.uri,
-            [{ resize: { width: 512, height: 512 } }],  // Set your desired dimensions here
+            [{ resize: { width: 1024, height: 1024 } }],  // Set your desired dimensions here
             { format: ImageManipulator.SaveFormat.JPEG, compress: 0.8 }
         );
     
@@ -59,7 +59,7 @@ export default function Index() {
     const pushToMongo = async () => {
         try{
             // console.log("Image uri: ", photo);
-            const response = await fetch("http://192.168.1.141:9050/camera", {
+            const response = await fetch("http://192.168.1.103:9050/camera", {
                 method : "POST",
                 headers : {
                     "Content-Type" : "application/json",
@@ -75,7 +75,7 @@ export default function Index() {
 
     const process = async () => {
         try{
-            const response = await fetch("http://192.168.1.141:9050/process", {
+            const response = await fetch("http://192.168.1.103:9050/process", {
                 method : "POST",
                 headers : {
                     "Content-Type" : "application/json",
@@ -117,7 +117,7 @@ export default function Index() {
 
     const renderCamera = () => {
         return(
-            <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
+            <CameraView style={styles.camera} facing={facing} ref={cameraRef} flash="on">
                 <View style={styles.buttonContainer}>
                     <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
                         <Text style={styles.text}>Flip Camera</Text>

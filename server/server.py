@@ -88,54 +88,153 @@ def process():
 
         if not image_uri:
             return jsonify({'error': 'No image URI provided'})
-
-        if image_uri.startswith('data:image'):
-            # Extract the base64 data
-            base64_data = re.sub('^data:image/.+;base64,', '', image_uri)
-            # Decode base64 to bytes
-            img_bytes = base64.b64decode(base64_data)
-            # Convert to numpy array
-            img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-            # print(f"image shape before decode: {img_array.shape}")
-            # print(img_array)
-
-            # Decode the image
-            img = cv.imdecode(img_array, cv.IMREAD_COLOR)
-            # print(f"image shape after decode: {img.shape}")
-            # print(img)
-
-            if img is None:
-                return jsonify({'error': 'Failed to decode image'})
-                
-            # Grayscale image
-            gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-            # print(f"image shape after decode and grayscale: {gray.shape}")
-            # print(gray)
-
-            # Apply binary thresholding
-            ret, binary = cv.threshold(gray, 190, 1, cv.THRESH_BINARY)
-            print(f"image shape after decode and grayscale and binary: {binary.shape}")
-            print(f"binary threshold is: {ret}")
-            print(binary)
-
-            cv.imwrite("processed_image_gray.jpg", gray)
-            cv.imwrite("processed_image_binary.jpg", binary * 255)
-
-            with open('image_aligned.txt', 'w') as f:
-                # For each row in the image
-                for row in binary:
-                    # Format each pixel value to take up 3 spaces (right-aligned)
-                    row_str = ' '.join(f"{pixel:3d}" for pixel in row)
-                    # Write the row and add a newline
-                    f.write(row_str + '\n')
-                    f.write('\n')
-
-            return jsonify({'success': True})
-        else:
-            return jsonify({'error': 'Unsupported URI format'})
+        
+        sheet(image_uri)
+        alignment(image_uri)
     except Exception as e:
         return jsonify({'error': str(e)})
+    
+def alignment(uri):
+    if (uri.startwith('data:image')):
 
+        return jsonify({'success' : True})
+    else:
+        return jsonify({'error' : 'Unsupported URI format'})
+
+    
+def sheet(uri):
+    if uri.startswith('data:image'):
+        # Extract the base64 data
+        base64_data = re.sub('^data:image/.+;base64,', '', uri)
+        # Decode base64 to bytes
+        img_bytes = base64.b64decode(base64_data)
+        # Convert to numpy array
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        # print(f"image shape before decode: {img_array.shape}")
+        # print(img_array)
+
+        # Decode the image
+        img = cv.imdecode(img_array, cv.IMREAD_COLOR)
+        # print(f"image shape after decode: {img.shape}")
+        # print(img)
+
+        if img is None:
+            return jsonify({'error': 'Failed to decode image'})
+            
+        # Grayscale image
+        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        # print(f"image shape after decode and grayscale: {gray.shape}")
+        # print(gray)
+
+        # Apply binary thresholding
+        ret, binary = cv.threshold(gray, 190, 1, cv.THRESH_BINARY)
+        # print(f"image shape after decode and grayscale and binary: {binary.shape}")
+        # print(f"binary threshold is: {ret}")
+        # print(binary)
+
+        # Apply morphologyEx to blank out the actual answer sheet (Not Good)
+        # kernel = np.ones((20,20), np.uint8)
+        # blank = cv.morphologyEx(binary, cv.MORPH_CLOSE, kernel, iterations=1)
+
+        # Contour Blanking (Better)
+        contours, _ = cv.findContours(binary, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        page_contour = max(contours, key=cv.contourArea)
+        blank = np.zeros_like(binary)
+        cv.drawContours(blank, [page_contour], 0, 1, -1)
+        # outline = np.zeros_like(binary)
+        # cv.drawContours(outline, [page_contour], 0, 1, 3)
+        outline = np.zeros((binary.shape[0], binary.shape[1], 3), dtype=np.uint8)
+        cv.drawContours(outline, [page_contour], 0, (0, 255, 255), 3)
+        # print("page_contour: ", page_contour)
+
+        # Get corners
+        con = np.zeros((binary.shape[0], binary.shape[1], 3), dtype=np.uint8)
+
+        # print("contour coordinate: ", c)
+        epsilon = 0.02 * cv.arcLength(page_contour, True)
+        corners = cv.approxPolyDP(page_contour, epsilon, True)
+        # print("corners: ", corners)
+        
+        # print("corners: ", corners)
+        cv.drawContours(con, [page_contour], -1, (0, 255, 255), 3)
+        cv.drawContours(con, corners, -1, (255, 0, 255), 10)
+
+        corners = sorted(np.concatenate(corners).tolist())
+
+        for index, c in enumerate(corners):
+            # print("corners: ", c)
+            character = chr(65 + index)
+            cv.putText(con, character, c, cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 1, cv.LINE_AA)
+        
+        # Order corners, top-left, top-right, bottom-right, bottom-left
+        ordered_corners = order_points(corners)
+        # print("ordered corners: ", ordered_corners)
+
+        # Get destination coordinates
+        (tl, tr, br, bl) = ordered_corners
+        print(tl, tr, br, bl)
+        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+        maxWidth = max(int(widthA), int(widthB))
+        # print("maxWidth: ", maxWidth)
+
+        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+        maxHeight = max(int(heightA), int(heightB))
+        # print("maxHeight: ", maxHeight)
+
+        destination_corners = [[0,0], [maxWidth, 0], [maxWidth, maxHeight], [0,maxHeight]]
+
+        # print("Destination corners: ", destination_corners)
+
+        M = cv.getPerspectiveTransform(np.float32(ordered_corners), np.float32(destination_corners))
+        final = cv.warpPerspective(img, M, (destination_corners[2][0], destination_corners[2][1]), flags=cv.INTER_LINEAR)
+
+        final_binary = cv.warpPerspective(binary, M, (destination_corners[2][0], destination_corners[2][1]), flags=cv.INTER_LINEAR)
+
+        cv.imwrite("original_image_color.jpg", img)
+        cv.imwrite("processed_image_gray.jpg", gray)
+        cv.imwrite("processed_image_binary.jpg", binary * 255)
+        cv.imwrite("blanked__image_binary.jpg", blank * 255)
+        cv.imwrite("contour_image.jpg", outline)
+        cv.imwrite("corner_image.jpg", con)
+        cv.imwrite("final_image.jpg", final)
+        cv.imwrite("final_binary_image.jpg", final_binary * 255)
+
+
+        with open('image_final_binary.txt', 'w') as f:
+            # For each row in the image
+            for row in final_binary:
+                # Format each pixel value to take up 3 spaces (right-aligned)
+                row_str = ' '.join(f"{pixel:3d}" for pixel in row)
+                # Write the row and add a newline
+                f.write(row_str + '\n')
+                f.write('\n')
+
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Unsupported URI format'})
+
+def order_points(pts):
+    "Rearrange coordinate: top-left, top-right, bottom-right, bottom-left"
+    rect = np.zeros((4,2), dtype='float32')
+    pts = np.array(pts)
+    s = pts.sum(axis=1)
+
+    # top-left have lowest sum
+    rect[0] = pts[np.argmin(s)]
+
+    # bottom-right have largest sum
+    rect[2] = pts[np.argmax(s)]
+
+    diff = np.diff(pts, axis=1)
+    # top-right have the smallest difference
+    rect[1] = pts[np.argmin(diff)]
+
+    # bottom-left have the largest difference
+    rect[3] = pts[np.argmax(diff)]
+
+    return rect.astype('int').tolist()
 
 
 if __name__ == "__main__":
