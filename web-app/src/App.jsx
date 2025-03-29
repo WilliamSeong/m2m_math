@@ -9,6 +9,8 @@ import { useState, useEffect } from "react";
 //     correct_answer : String
 // }
 
+const address = "http://192.168.1.8:9050"
+
 export default function App() {
 
     // const [question, setQuestion] = useState<Question>(null);
@@ -23,7 +25,7 @@ export default function App() {
 
         async function fetchData() {
 
-            const response = await fetch("http://localhost:3000/students");
+            const response = await fetch(`${address}/students`);
 
             const data = await response.json();
 
@@ -47,38 +49,49 @@ export default function App() {
     // }
 
     async function handleCurrentStudent(currentStudentId) {
-        const response = await fetch("http://localhost:3000/student/details", {
-            method : "POST",
-            headers : {
-                "Content-Type" : "application/json",
-            },
-            body : JSON.stringify({
-                studentId : currentStudentId
-            })
-        });
+        try {
+            const response = await fetch(`${address}/student/details`, {
+                method : "POST",
+                headers : {
+                    "Content-Type" : "application/json",
+                },
+                body : JSON.stringify({
+                    studentId : currentStudentId
+                })
+            });
+    
+            const data = await response.json();
+    
+            const { result, packets } = data;
 
-        const data = await response.json();
+            const resultArray = JSON.parse(result);
+            const packetsArray = JSON.parse(packets);
 
-        const { result, packets } = data;
+            console.log(resultArray);
 
-        let urls = [];
-
-        for (const packet of packets ) {
-            const base64Data = packet.content;
-            const binaryString = atob(base64Data);
-            
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+            let urls = [];
+    
+            for (const packet of packetsArray ) {
+                console.log(packet);
+                const base64Data = packet.content.$binary.base64;
+                const binaryString = atob(base64Data);
+                
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+    
+                const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
+    
+                const url = URL.createObjectURL(pdfBlob);
+                urls = [...urls, url];
             }
-
-            const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
-
-            const url = URL.createObjectURL(pdfBlob);
-            urls = [...urls, url];
+            setCurrentStudent(resultArray);
+            setCurrentPackets(urls);
+    
+        } catch(e) {
+            console.log("Student Details fetch error: ", e);
         }
-        setCurrentStudent(result);
-        setCurrentPackets(urls);
     }
 
     async function handleObjectiveCheckbox() {
@@ -187,7 +200,6 @@ export default function App() {
             ): (
                 <></>
             )}
-            <button onClick={testButton}>Test</button>
         </div>
     )
 }

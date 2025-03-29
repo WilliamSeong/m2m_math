@@ -1,5 +1,7 @@
 from flask import Flask, request
 from flask import jsonify
+from bson.json_util import dumps
+from bson.objectid import ObjectId
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -29,6 +31,57 @@ client = MongoClient(uri, server_api=ServerApi('1'))
 def test():
     print("Test request received")
     return jsonify({"message" : "Test received"})
+
+# Get all students
+@app.route("/students")
+def students():
+    print("Fetching students")
+    try:
+        result = fetchStudents(client)
+        # json string the list with dumps (Mongo ObjectId won't jsonify)
+        json_data = dumps(result)
+        return json_data
+    except Exception as e:
+        print(f"Student fetching error: {e}")
+        return jsonify({'error' : e})
+    
+def fetchStudents(client):
+    cursor = client["m2m_math_db"]["students"].find({})
+    # convert mongo cursor to python list
+    list_cur = list(cursor)
+    return list_cur
+
+@app.route("/student/details", methods=['POST'])
+def studentDetails():
+    print("Fetching student details")
+    data = request.get_json()
+    student_id = data.get("studentId")
+
+    details_result = fetchStudentDetails(client, student_id)
+    packets_result = fetchStudentPackets(client, student_id)
+
+    json_data_details = dumps(details_result)
+    json_data_packets = dumps(packets_result)
+
+    return jsonify({'result' : json_data_details, 'packets' : json_data_packets})
+
+def fetchStudentDetails(client, student_id):
+    print("making call to db for student details with", student_id)
+    student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+
+    result = client["m2m_math_db"]["students"].find_one({"_id" : student_id_obj})
+
+    return result
+
+def fetchStudentPackets(client, student_id):
+    print("Checking packets for student id: ", student_id)
+    student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+    
+    cursor = client["m2m_math_db"]["packets"].find({"student_id" : student_id_obj})
+    
+    list_cur = list(cursor)
+    return list_cur
+
 
 @app.route("/db")
 def db():
