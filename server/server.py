@@ -9,6 +9,8 @@ import cv2 as cv
 import numpy as np
 import re
 import base64
+import math
+import random
 
 import os
 
@@ -51,22 +53,28 @@ def fetchStudents(client):
     list_cur = list(cursor)
     return list_cur
 
+# Get a student details and their packets
 @app.route("/student/details", methods=['POST'])
 def studentDetails():
-    print("Fetching student details")
     data = request.get_json()
     student_id = data.get("studentId")
+    print(f"Fetching student {student_id} details")
 
-    details_result = fetchStudentDetails(client, student_id)
-    packets_result = fetchStudentPackets(client, student_id)
+    try:
 
-    json_data_details = dumps(details_result)
-    json_data_packets = dumps(packets_result)
+        details_result = fetchStudentDetails(client, student_id)
+        packets_result = fetchStudentPackets(client, student_id)
 
-    return jsonify({'result' : json_data_details, 'packets' : json_data_packets})
+        json_data_details = dumps(details_result)
+        json_data_packets = dumps(packets_result)
+
+        return jsonify({'result' : json_data_details, 'packets' : json_data_packets})
+
+    except Exception as e:
+        return jsonify({'error' : e})
 
 def fetchStudentDetails(client, student_id):
-    print("making call to db for student details with", student_id)
+    # print("making call to db for student details with", student_id)
     student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
 
     result = client["m2m_math_db"]["students"].find_one({"_id" : student_id_obj})
@@ -74,13 +82,64 @@ def fetchStudentDetails(client, student_id):
     return result
 
 def fetchStudentPackets(client, student_id):
-    print("Checking packets for student id: ", student_id)
+    # print("Checking packets for student id: ", student_id)
     student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
     
     cursor = client["m2m_math_db"]["packets"].find({"student_id" : student_id_obj})
     
     list_cur = list(cursor)
     return list_cur
+
+@app.route("/generate", methods=['POST'])
+def generate():
+    print("Generating packet")
+    data = request.get_json()
+
+    objective_list = data.get("objectiveList")
+    student_id = data.get("studentId")
+    try:
+
+        print(f"Objective list: {objective_list}")
+        print(f"Student id: {student_id}")
+
+        result = generateQuestions(client, objective_list);
+
+        return jsonify({'success' : True})
+    except Exception as e:
+        return jsonify({'error' : e})
+
+def generateQuestions(client, objectives):
+    print(f"Generating questions for objectives {objectives}")
+    
+    allQuestions = []
+
+    for obj in objectives:
+        print(obj["id"])
+        student_id_obj = ObjectId(obj["id"]['$oid']) if isinstance(obj["id"], dict) else ObjectId(obj["id"])
+        result = client["m2m_math_db"]["questions"].find_one({"objective_id" : student_id_obj})
+        print(f"Question template: {result["template"]}")
+        generateNQuestions(result, 3)
+
+def generateNQuestions(template, n):
+    question = template["template"]
+    solution = template["correct_answer"]
+    answers = template["answers"]
+
+    problems = []
+
+    for _ in range(n):
+        values = {}
+
+        for var_name, constraints in template["variables"].items():
+            # print(f"Variable name: {var_name}")
+            # print(f"Constraints: {constraints}")
+            if constraints.get('min') == 0:
+                values[var_name] = math.floor(random.random() * constraints['max']) + 1
+            else:
+                # Original calculation works fine if min is already > 0
+                values[var_name] = math.floor(random.random() * (constraints['max'] - constraints['min'] + 1) + constraints['min'])
+        
+        print(f"Values: {values}")
 
 
 @app.route("/db")

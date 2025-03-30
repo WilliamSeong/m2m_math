@@ -127,7 +127,7 @@ export default function App() {
 
     async function generateTemplatePacket() {
         console.log("These are the objectives set for generation: ", currentObjectives);
-        const response = await fetch("http://localhost:3000/generate/2", {
+        const response = await fetch(`${address}/generate`, {
             method : "POST",
             headers : {
                 "Content-Type" : "application/json"

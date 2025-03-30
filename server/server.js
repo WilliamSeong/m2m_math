@@ -286,7 +286,6 @@ function shuffle(array) {
 
 // Getting the template
 async function generateTemplateQuestions(client, objectives) {
-    // console.log("Generating questions for objectives: ", objectives, " for student id ", student);
 
     let allQuestions = []
 
