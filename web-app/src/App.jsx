@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 //     correct_answer : String
 // }
 
-const address = "http://192.168.1.8:9050"
+const address = "http://192.168.200.130:9050"
 
 export default function App() {
 
@@ -146,7 +146,9 @@ export default function App() {
     async function testPDF() {
         console.log("Testing pdf");
 
-        const response = await fetch("http://localhost:3000/pdf");
+        const response = await fetch(`${address}/pdf`);
+
+        console.log(response)
 
         const pdfBlob = await response.blob();
 
@@ -200,6 +202,10 @@ export default function App() {
             ): (
                 <></>
             )}
+            <button onClick={testPDF}>Test</button>
+            {pdfUrls ? (
+                <a href={pdfUrls}>TEST PDF</a>
+            ) : <p>Loading</p>}
         </div>
     )
 }

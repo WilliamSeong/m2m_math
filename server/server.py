@@ -1,5 +1,6 @@
 from flask import Flask, request
 from flask import jsonify
+from flask import send_file
 from bson.json_util import dumps
 from bson.objectid import ObjectId
 from flask_cors import CORS
@@ -14,6 +15,7 @@ import random
 import copy
 from fpdf import FPDF
 
+import io
 import os
 
 from pymongo.mongo_client import MongoClient
@@ -35,6 +37,35 @@ client = MongoClient(uri, server_api=ServerApi('1'))
 def test():
     print("Test request received")
     return jsonify({"message" : "Test received"})
+
+# Generate pdf
+@app.route("/pdf")
+def pdf():
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="Welcome to Python!", ln=1, align="C")
+
+        # Get the PDF content as bytes
+        pdf_bytes = pdf.output()
+        print(f"pdf in byte form: {pdf_bytes}")
+
+        # Create a blob-like object using io.BytesIO
+        pdf_blob = io.BytesIO(pdf_bytes)
+        print(f"pdf blob form: {pdf_blob}")
+        # Reset the file pointer to the beginning
+        pdf_blob.seek(0)
+        
+        # Return the PDF as a downloadable file
+        return send_file(
+            pdf_blob,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='document.pdf'
+        )
+    except Exception as e:
+        return jsonify({'error' : e})
 
 # Get all students
 @app.route("/students")
@@ -172,7 +203,6 @@ def generateNQuestions(template, n):
     
     # print(f"Problems: {problems}")
     return problems
-
 
 @app.route("/db")
 def db():
