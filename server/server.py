@@ -12,6 +12,7 @@ import base64
 import math
 import random
 import copy
+from fpdf import FPDF
 
 import os
 
