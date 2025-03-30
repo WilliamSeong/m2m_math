@@ -3,8 +3,10 @@ from flask import jsonify
 from flask import send_file
 from bson.json_util import dumps
 from bson.objectid import ObjectId
+from bson.binary import Binary
 from flask_cors import CORS
 from dotenv import load_dotenv
+from datetime import datetime
 
 import cv2 as cv
 import numpy as np
@@ -45,7 +47,7 @@ def pdf():
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="Welcome to Python!", ln=1, align="C")
+        pdf.cell(200, 10, txt="Test Packet!", ln=1, align="C")
 
         # Get the PDF content as bytes
         pdf_bytes = pdf.output()
@@ -130,16 +132,100 @@ def generate():
 
     objective_list = data.get("objectiveList")
     student_id = data.get("studentId")
+    options = ["A", "B", "C", "D"]
     try:
 
         print(f"Objective list: {objective_list}")
         print(f"Student id: {student_id}")
 
         result = generateQuestions(client, objective_list);
+        ans_key = {}
 
-        return jsonify({'success' : True})
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, text="Test Packet!", ln=1, align="C")
+
+        for obj in objective_list:
+            pdf.cell(200, 5, text=obj["name"], ln=1)
+        
+        for i, question in enumerate(result):
+            # print(f"question {i}: {question}")
+            pdf.cell(200, 5, text=f"{i + 1}. {question["question"]}", ln=1)
+                # Create a single string with all answers and their labels
+            answer_line = ""
+
+            shuffled_answers = shuffle(question["answers"])
+
+            for j, answer in enumerate(shuffled_answers):
+
+                # Add letter label based on index
+                letter = chr(65 + j)  # 65 is ASCII for 'A'
+
+                if shuffled_answers[j] == question["solution"]:
+                    ans_key[str(i)] = [options[j]]
+                
+                # Add spacing between answers except for the first one
+                if j > 0:
+                    answer_line += "   "
+                
+                # Add the labeled answer
+                answer_line += f"[{letter}] {str(answer)}"
+            
+            # Print all answers on one line
+            pdf.cell(200, 5, text=answer_line, ln=1)
+        print(f"answer key : {ans_key}")
+
+        pdf.multi_cell(200, 10, text=str(ans_key))
+
+        # Get the PDF content as bytes
+        pdf_bytes = pdf.output()
+        # print(f"pdf in byte form: {pdf_bytes}")
+
+        createPacket(client, pdf_bytes, student_id, ans_key)
+
+        # Create a blob-like object using io.BytesIO
+        pdf_blob = io.BytesIO(pdf_bytes)
+        # print(f"pdf blob form: {pdf_blob}")
+        # Reset the file pointer to the beginning
+        pdf_blob.seek(0)
+        
+        # Return the PDF as a downloadable file
+        return send_file(
+            pdf_blob,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='document.pdf'
+        )
     except Exception as e:
         return jsonify({'error' : e})
+    
+def createPacket(client, packet, student_id, ans_key):
+    try:
+        mongo_packet = Binary(packet)
+        student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+        result = client["m2m_math_db"]["packets"].insert_one({"content" : mongo_packet, "student_id" : student_id_obj, "answer_key" : ans_key, "date_created" : datetime.now()})
+        packet_id = result.inserted_id
+        client["m2m_math_db"]["students"].update_one({"_id": student_id_obj}, {"$push": {"packets_inprogress": packet_id}})
+        return packet_id
+    except Exception as e:
+        print(f"Error: ", e)
+        return {'error' : e}
+    
+def shuffle(array):
+    # Make a copy of the array (optional, if you want to preserve the original)
+    # array_copy = array.copy()
+    
+    # Start from the last element
+    for current_index in range(len(array) - 1, 0, -1):
+        # Pick a random index from 0 to current_index
+        random_index = random.randint(0, current_index)
+        
+        # Swap current_index with random_index
+        array[current_index], array[random_index] = array[random_index], array[current_index]
+    
+    return array
+    
 
 def generateQuestions(client, objectives):
     print(f"Generating questions for objectives {objectives}")
@@ -149,7 +235,7 @@ def generateQuestions(client, objectives):
     for obj in objectives:
         student_id_obj = ObjectId(obj["id"]['$oid']) if isinstance(obj["id"], dict) else ObjectId(obj["id"])
         result = client["m2m_math_db"]["questions"].find_one({"objective_id" : student_id_obj})
-        allQuestions += generateNQuestions(result, 3)
+        allQuestions += generateNQuestions(result, 5)
     
     return allQuestions
 

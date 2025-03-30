@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 //     correct_answer : String
 // }
 
-const address = "http://192.168.200.130:9050"
+const address = "http://192.168.1.148:9050"
 
 export default function App() {
 
