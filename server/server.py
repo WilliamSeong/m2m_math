@@ -11,6 +11,7 @@ import re
 import base64
 import math
 import random
+import copy
 
 import os
 
@@ -114,16 +115,17 @@ def generateQuestions(client, objectives):
     allQuestions = []
 
     for obj in objectives:
-        print(obj["id"])
         student_id_obj = ObjectId(obj["id"]['$oid']) if isinstance(obj["id"], dict) else ObjectId(obj["id"])
         result = client["m2m_math_db"]["questions"].find_one({"objective_id" : student_id_obj})
-        print(f"Question template: {result["template"]}")
-        generateNQuestions(result, 3)
+        allQuestions += generateNQuestions(result, 3)
+    
+    return allQuestions
 
 def generateNQuestions(template, n):
     question = template["template"]
     solution = template["correct_answer"]
-    answers = template["answers"]
+    answers = copy.deepcopy(template["answers"])
+
 
     problems = []
 
@@ -139,7 +141,36 @@ def generateNQuestions(template, n):
                 # Original calculation works fine if min is already > 0
                 values[var_name] = math.floor(random.random() * (constraints['max'] - constraints['min'] + 1) + constraints['min'])
         
-        print(f"Values: {values}")
+        # print(f"Values: {values}")
+
+        for var_name, value in values.items():
+            # Create regex pattern
+            pattern = r'{{' + var_name + r'}}'
+            
+            # Replace in question and solution
+            question = re.sub(pattern, str(value), question)
+            solution = re.sub(pattern, str(value), solution)
+            
+            # Replace in answers
+            for index, ans in enumerate(answers):
+                answers[index] = re.sub(pattern, str(value), ans)
+        
+        # Evaluate the solution and answers
+        solution_str = solution.strip("{}")
+        solution = eval(solution_str)
+
+        for index, ans in enumerate(answers):
+            ans_str = ans.strip("{}")
+            answers[index] = eval(ans_str)
+
+        problems.append({"question": question, "solution": solution, "answers": answers})
+            
+        question = template["template"]
+        solution = template["correct_answer"]
+        answers = copy.deepcopy(template["answers"])
+    
+    # print(f"Problems: {problems}")
+    return problems
 
 
 @app.route("/db")
