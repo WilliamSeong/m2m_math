@@ -202,10 +202,6 @@ export default function App() {
             ): (
                 <></>
             )}
-            <button onClick={testPDF}>Test</button>
-            {pdfUrls ? (
-                <a href={pdfUrls}>TEST PDF</a>
-            ) : <p>Loading</p>}
         </div>
     )
 }

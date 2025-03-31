@@ -51,11 +51,11 @@ def pdf():
 
         # Get the PDF content as bytes
         pdf_bytes = pdf.output()
-        print(f"pdf in byte form: {pdf_bytes}")
+        # print(f"pdf in byte form: {pdf_bytes}")
 
         # Create a blob-like object using io.BytesIO
         pdf_blob = io.BytesIO(pdf_bytes)
-        print(f"pdf blob form: {pdf_blob}")
+        # print(f"pdf blob form: {pdf_blob}")
         # Reset the file pointer to the beginning
         pdf_blob.seek(0)
         
@@ -135,8 +135,8 @@ def generate():
     options = ["A", "B", "C", "D"]
     try:
 
-        print(f"Objective list: {objective_list}")
-        print(f"Student id: {student_id}")
+        # print(f"Objective list: {objective_list}")
+        # print(f"Student id: {student_id}")
 
         result = generateQuestions(client, objective_list);
         ans_key = {}
@@ -174,9 +174,9 @@ def generate():
             
             # Print all answers on one line
             pdf.cell(200, 5, text=answer_line, ln=1)
-        print(f"answer key : {ans_key}")
+        # print(f"answer key : {ans_key}")
 
-        pdf.multi_cell(200, 10, text=str(ans_key))
+        # pdf.multi_cell(200, 10, text=str(ans_key))
 
         # Get the PDF content as bytes
         pdf_bytes = pdf.output()
@@ -209,7 +209,6 @@ def createPacket(client, packet, student_id, ans_key):
         client["m2m_math_db"]["students"].update_one({"_id": student_id_obj}, {"$push": {"packets_inprogress": packet_id}})
         return packet_id
     except Exception as e:
-        print(f"Error: ", e)
         return {'error' : e}
     
 def shuffle(array):
@@ -386,7 +385,7 @@ def process():
 #     cv.imwrite("answer_extraction.jpg", vis_img * 255)
 
 def extract_answers(final):
-    print("Extracting answers!")
+    # print("Extracting answers!")
     # Load the pre-processed image
     img = final
     
@@ -407,8 +406,8 @@ def extract_answers(final):
     options = ['A', 'B', 'C', 'D', 'E']
     
     for q in range(1, num_questions + 1):
-        if (q < 18):
-            print("Question ", q)
+        # if (q < 18):
+        #     print("Question ", q)
         # Calculate the row position for this question
         row_start = (q - 1) * row_height
         row_end = row_start + row_height
