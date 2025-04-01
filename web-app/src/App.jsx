@@ -84,7 +84,10 @@ export default function App() {
                 const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
     
                 const url = URL.createObjectURL(pdfBlob);
-                urls = [...urls, url];
+
+                const submissions = packet.submission_details
+
+                urls = [...urls, [url, submissions]];
             }
             setCurrentStudent(resultArray);
             setCurrentPackets(urls);
@@ -108,7 +111,7 @@ export default function App() {
 
     async function generatePacket() {
 
-        console.log("These are the objectives set for generation: ", currentObjectives);
+        // console.log("These are the objectives set for generation: ", currentObjectives);
         const response = await fetch("http://localhost:3000/generate", {
             method : "POST",
             headers : {
@@ -195,8 +198,34 @@ export default function App() {
                     ) : (
                         <></>
                     )}
-                    {currentPackets.map((url, index) => (
-                        <div key={index}><a href={url} target="_blank">Packet {index}</a></div>
+                    {currentPackets.map((packetData, index) => (
+                        <div key={index}>
+                            <div ><a href={packetData[0]} target="_blank">Packet {index}</a></div>
+                            <div>
+                                <ul>
+                                    {packetData[1].map((submissionData, subIndex) => {
+                                        // Extract date and score info
+                                        const dateObj = submissionData[0].$date 
+                                            ? new Date(submissionData[0].$date) 
+                                            : new Date();
+                                        
+                                        const scoreInfo = submissionData[1];
+                                        const total = scoreInfo.correct + scoreInfo.incorrect;
+                                        const score = `${scoreInfo.correct}/${total}`;
+                                        
+                                        // Format date: "March 31st"
+                                        const options = { month: 'long', day: 'numeric' };
+                                        let dateStr = dateObj.toLocaleDateString('en-US', options);
+                                                                                
+                                        return (
+                                            <li key={subIndex} className="submission-record">
+                                                {dateStr}: {score}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        </div>
                     ))}
                 </div>
             ): (

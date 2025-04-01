@@ -100,14 +100,29 @@ def studentDetails():
 
         details_result = fetchStudentDetails(client, student_id)
         packets_result = fetchStudentPackets(client, student_id)
+        submissions_result = getSubmissions(client, packets_result)
+
+        for packet in packets_result:
+            packet["submission_details"] = submissions_result[str(packet["_id"])]
 
         json_data_details = dumps(details_result)
         json_data_packets = dumps(packets_result)
 
         return jsonify({'result' : json_data_details, 'packets' : json_data_packets})
-
     except Exception as e:
         return jsonify({'error' : e})
+    
+def getSubmissions(client, packets):
+    packets_dict = {}
+    for packet in packets:
+        submissions = packet["submissions"]
+        submissions_list = []
+        for submission in submissions:
+            result = client["m2m_math_db"]["submissions"].find_one({"_id" : submission})
+            submissions_list += [[result["datetime"], result["score"]]]
+        packets_dict[str(packet["_id"])] = submissions_list
+
+    return packets_dict
 
 def fetchStudentDetails(client, student_id):
     # print("making call to db for student details with", student_id)
@@ -371,7 +386,8 @@ def pushSubmission(client, packet_id, final_uri, vis_uri, correct, incorrect):
                         {
                             "correct" : correct,
                             "incorrect" : incorrect,
-                        }
+                        },
+                    "datetime" : datetime.now()
                     }
         result = client["m2m_math_db"]["submissions"].insert_one(document)
         submission_id = result.inserted_id
