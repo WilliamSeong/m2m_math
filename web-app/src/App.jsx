@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 //     correct_answer : String
 // }
 
-const address = "http://192.168.1.148:9050"
+const address = "http://192.168.1.8:9050"
 
 export default function App() {
 
@@ -67,12 +67,12 @@ export default function App() {
             const resultArray = JSON.parse(result);
             const packetsArray = JSON.parse(packets);
 
-            console.log(resultArray);
+            // console.log(resultArray);
 
             let urls = [];
     
             for (const packet of packetsArray ) {
-                console.log(packet);
+                // console.log("Student id: ", currentStudentId, " packet ", packet);
                 const base64Data = packet.content.$binary.base64;
                 const binaryString = atob(base64Data);
                 
@@ -126,7 +126,7 @@ export default function App() {
     }
 
     async function generateTemplatePacket() {
-        console.log("These are the objectives set for generation: ", currentObjectives);
+        // console.log("These are the objectives set for generation: ", currentObjectives);
         const response = await fetch(`${address}/generate`, {
             method : "POST",
             headers : {

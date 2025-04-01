@@ -16,6 +16,7 @@ import math
 import random
 import copy
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 
 import io
 import os
@@ -47,7 +48,7 @@ def pdf():
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="Test Packet!", ln=1, align="C")
+        pdf.cell(200, 10, txt="Test Packet!", align="C")
 
         # Get the PDF content as bytes
         pdf_bytes = pdf.output()
@@ -141,17 +142,20 @@ def generate():
         result = generateQuestions(client, objective_list);
         ans_key = {}
 
+        packet_id = createPacket(client, student_id)
+
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, text="Test Packet!", ln=1, align="C")
+        pdf.set_font("helvetica", size=12)
+        print(f"Packet id: {packet_id}")
+        pdf.cell(200, 10, text=str(packet_id), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
 
         for obj in objective_list:
-            pdf.cell(200, 5, text=obj["name"], ln=1)
+            pdf.cell(200, 5, text=obj["name"], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         
         for i, question in enumerate(result):
             # print(f"question {i}: {question}")
-            pdf.cell(200, 5, text=f"{i + 1}. {question["question"]}", ln=1)
+            pdf.cell(200, 5, text=f"{i + 1}. {question["question"]}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
                 # Create a single string with all answers and their labels
             answer_line = ""
 
@@ -163,7 +167,7 @@ def generate():
                 letter = chr(65 + j)  # 65 is ASCII for 'A'
 
                 if shuffled_answers[j] == question["solution"]:
-                    ans_key[str(i)] = [options[j]]
+                    ans_key[str(i + 1)] = options[j]
                 
                 # Add spacing between answers except for the first one
                 if j > 0:
@@ -173,7 +177,7 @@ def generate():
                 answer_line += f"[{letter}] {str(answer)}"
             
             # Print all answers on one line
-            pdf.cell(200, 5, text=answer_line, ln=1)
+            pdf.cell(200, 5, text=answer_line, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         # print(f"answer key : {ans_key}")
 
         # pdf.multi_cell(200, 10, text=str(ans_key))
@@ -182,7 +186,7 @@ def generate():
         pdf_bytes = pdf.output()
         # print(f"pdf in byte form: {pdf_bytes}")
 
-        createPacket(client, pdf_bytes, student_id, ans_key)
+        addPacketContent(client, packet_id, pdf_bytes, ans_key)
 
         # Create a blob-like object using io.BytesIO
         pdf_blob = io.BytesIO(pdf_bytes)
@@ -200,16 +204,22 @@ def generate():
     except Exception as e:
         return jsonify({'error' : e})
     
-def createPacket(client, packet, student_id, ans_key):
+def createPacket(client, student_id):
     try:
-        mongo_packet = Binary(packet)
         student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
-        result = client["m2m_math_db"]["packets"].insert_one({"content" : mongo_packet, "student_id" : student_id_obj, "answer_key" : ans_key, "date_created" : datetime.now()})
+        result = client["m2m_math_db"]["packets"].insert_one({"student_id" : student_id_obj, "submissions" : [], "date_created" : datetime.now()})
         packet_id = result.inserted_id
         client["m2m_math_db"]["students"].update_one({"_id": student_id_obj}, {"$push": {"packets_inprogress": packet_id}})
         return packet_id
     except Exception as e:
         return {'error' : e}
+
+def addPacketContent(client, packet_id, packet, ans_key):
+    mongo_packet = Binary(packet)
+    packet_id_obj = ObjectId(packet_id['$oid']) if isinstance(packet_id, dict) else ObjectId(packet_id)
+    print(f"addPacket packed id: {packet_id}")
+    result = client["m2m_math_db"]["packets"].update_one({"_id" : packet_id_obj}, {'$set' : {"content" : mongo_packet, "answer_key" : ans_key}})
+    return result
     
 def shuffle(array):
     # Make a copy of the array (optional, if you want to preserve the original)
@@ -312,28 +322,6 @@ def questions(client):
     except Exception as e:
         print("DB fetch error for questions: ", e)
         return None
-
-@app.route("/camera", methods=['POST'])
-def cameraResponse():
-    data = request.get_json()
-    image_uri = data.get("uri")
-
-    try:
-        result = pushImage(client, image_uri)
-        print(result)
-        return jsonify({"message" : "success"})
-    except:
-        print("Algebra fetch error")
-        return jsonify({"error": "Database error"}), 500
-
-
-def pushImage(client, uri):
-    try:
-        result = client["m2m_math_db"]["submissions"].insert_one({"uri" : uri})
-        return result
-    except Exception as e:
-        print("Image insert error for questions: ", e)
-        return None
     
 file_path = "testImage.png"
 print(f"File exists: {os.path.exists(file_path)}")
@@ -344,45 +332,121 @@ def process():
     try:
         data = request.get_json()
         image_uri = data.get("uri")
+        # packet_id = data.get("packetId")
+        packet_id = "67eb0f7182159cf0f5c40629"
+
+        print(f"Packet Id for grading: {packet_id}")
 
         if not image_uri:
             return jsonify({'error': 'No image URI provided'})
         
         final, final_binary = sheet(image_uri)
-        # visualize_extraction_regions(final_binary)
-        answers = extract_answers(final_binary)
-        print("answers: ", answers)
+        final_png = numpy_to_uri(final)
+        vis_final = visualize_extraction_regions(final_binary)
+        vis_final_png = numpy_to_uri(vis_final)
+        student_answers = extract_answers(final_binary)
+        print(f"answers: {student_answers}")
+
+        answer_key = getAnswerKey(client, packet_id)
+        print(f"answer key: {answer_key}")
+
+        correct, incorrect = grade(student_answers, answer_key)
+
+        pushSubmission(client, packet_id, final_png, vis_final_png, correct, incorrect)
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)})
+    
+def pushSubmission(client, packet_id, final_uri, vis_uri, correct, incorrect):
+    try:
+        packet_id_obj = ObjectId(packet_id) if isinstance(packet_id, dict) else ObjectId(packet_id)
+        document = {
+                    "packet_id" : packet_id_obj, 
+                    "images" : 
+                        {
+                            "original" : final_uri, 
+                            "processed" : vis_uri
+                        },
+                    "score" :
+                        {
+                            "correct" : correct,
+                            "incorrect" : incorrect,
+                        }
+                    }
+        result = client["m2m_math_db"]["submissions"].insert_one(document)
+        submission_id = result.inserted_id
+        client["m2m_math_db"]["packets"].update_one({"_id": packet_id_obj}, {"$push": {"submissions": submission_id}})
+        return result
+    except Exception as e:
+        print("Image insert error for questions: ", e)
+        return None
 
-# def visualize_extraction_regions(binary_image):
-#     # Make a copy of the image and convert to BGR so we can draw colored lines
-#     vis_img = cv.cvtColor(binary_image, cv.COLOR_GRAY2BGR)
+def numpy_to_uri(image_array):
+    # Encode the image as PNG/JPEG
+    success, encoded_img = cv.imencode('.png', image_array)
+    if not success:
+        return None
     
-#     # Define the region we want to extract answers from
-#     y_start, y_end = 250, 1450
-#     x_start, x_end = 120, 340
+    # Convert to base64 string
+    base64_str = base64.b64encode(encoded_img).decode('utf-8')
     
-#     # Draw a red rectangle around the answer region
-#     cv.rectangle(vis_img, (x_start, y_start), (x_end, y_end), (0, 0, 255), 2)
+    # Create the data URI
+    img_uri = f"data:image/png;base64,{base64_str}"
     
-#     # Calculate row height (for 50 questions)
-#     num_questions = 50
-#     row_height = (y_end - y_start) // num_questions
+    return img_uri
+
+
+def grade(answers, answer_key):
+    correct = 0
+    incorrect = 0
+    for key, value in answer_key.items():
+        print(f"question {key}: answer key-{value} answer-{answers[key]}")
+        student_answer = value
+        correct_answer = answers[key]
+        if (student_answer == correct_answer):
+            correct += 1
+        else:
+            incorrect += 1
     
-#     # Draw horizontal lines for each row
-#     for i in range(1, num_questions):
-#         y = y_start + i * row_height
-#         cv.line(vis_img, (x_start, y), (x_end, y), (0, 0, 255), 1)
+    print(f"Correct: {correct}")
+    print(f"Incorrect: {incorrect}")
+    print(f"Grade: {correct}/{correct+incorrect}")
+    return correct, incorrect
     
-#     # Draw vertical lines to separate A, B, C, D, E columns
-#     option_width = (x_end - x_start) // 5
-#     for i in range(1, 5):
-#         x = x_start + i * option_width
-#         cv.line(vis_img, (x, y_start), (x, y_end), (0, 0, 255), 1)
+def getAnswerKey(client, packet_id):
+    packet_id_obj = ObjectId(packet_id) if isinstance(packet_id, dict) else ObjectId(packet_id)
+    result = client["m2m_math_db"]["packets"].find_one({"_id" : packet_id_obj}, {"_id" : 0, "answer_key" : 1})
+    return result["answer_key"]
+
+def visualize_extraction_regions(binary_image):
+    # Make a copy of the image and convert to BGR so we can draw colored lines
+    vis_img = cv.cvtColor(binary_image, cv.COLOR_GRAY2BGR)
     
-#     cv.imwrite("answer_extraction.jpg", vis_img * 255)
+    # Define the region we want to extract answers from
+    y_start, y_end = 250, 1450
+    x_start, x_end = 120, 340
+    
+    # Draw a red rectangle around the answer region
+    cv.rectangle(vis_img, (x_start, y_start), (x_end, y_end), (0, 0, 255), 2)
+    
+    # Calculate row height (for 50 questions)
+    num_questions = 50
+    row_height = (y_end - y_start) // num_questions
+    
+    # Draw horizontal lines for each row
+    for i in range(1, num_questions):
+        y = y_start + i * row_height
+        cv.line(vis_img, (x_start, y), (x_end, y), (0, 0, 255), 1)
+    
+    # Draw vertical lines to separate A, B, C, D, E columns
+    option_width = (x_end - x_start) // 5
+    for i in range(1, 5):
+        x = x_start + i * option_width
+        cv.line(vis_img, (x, y_start), (x, y_end), (0, 0, 255), 1)
+    
+    cv.imwrite("answer_extraction.jpg", vis_img * 255)
+
+    return(vis_img)
 
 def extract_answers(final):
     # print("Extracting answers!")
@@ -444,9 +508,9 @@ def extract_answers(final):
         if np.mean(significance) == .2:
             for i in range(5):
                 if significance[i] == 1:
-                    answers[q] = options[i]
+                    answers[str(q)] = options[i]
         else:
-            answers[q] = options[4]
+            answers[str(q)] = options[4]
     
     return answers
 

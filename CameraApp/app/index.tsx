@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, Button, TouchableOpacity, Pressable } from "react-native";
+import { Text, View, StyleSheet, Button, TouchableOpacity, Pressable, TextInput } from "react-native";
 import { Image } from 'expo-image';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRef, useState } from 'react';
@@ -12,6 +12,7 @@ export default function Index() {
     const [facing, setFacing] = useState<CameraType>('back');
     const [cameraPermission, requestCameraPermission] = useCameraPermissions();
     const [photo, setPhoto] = useState<string | undefined>();
+    const [packetId, setPacketId] = useState("");
 
     if(!cameraPermission) {
         return <View />
@@ -73,6 +74,7 @@ export default function Index() {
         }
     };
 
+
     const process = async () => {
         try{
             const response = await fetch("http://192.168.1.8:9050/process", {
@@ -81,18 +83,25 @@ export default function Index() {
                     "Content-Type" : "application/json",
                 },
                 body : JSON.stringify({
-                    uri : photo
+                    uri : photo,
+                    packetId : packetId
                 })
             });
         } catch(e) {
             console.log("Process error: ", e);
         }
-
     }
 
     const renderImage = () => {
         return(
             <View>
+                <TextInput
+                    style={styles.input}
+                    onChangeText={setPacketId}
+                    value={packetId}
+                    placeholder="Packet Id"
+                />
+
                 <Image
                     source={ photo }
                     contentFit="contain"
@@ -186,4 +195,10 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: 'white',    
     },
+    input: {
+        height: 40,
+        margin: 12,
+        borderWidth: 1,
+        padding: 10,
+      },
 });
