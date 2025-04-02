@@ -6,6 +6,8 @@ import { useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 
+const address = "http://192.168.1.141:9050"
+
 export default function Index() {
     let cameraRef = useRef<CameraView>(null);
 
@@ -60,7 +62,7 @@ export default function Index() {
     const pushToMongo = async () => {
         try{
             // console.log("Image uri: ", photo);
-            const response = await fetch("http://192.168.1.8:9050/camera", {
+            const response = await fetch(`${address}/camera`, {
                 method : "POST",
                 headers : {
                     "Content-Type" : "application/json",
@@ -77,7 +79,7 @@ export default function Index() {
 
     const process = async () => {
         try{
-            const response = await fetch("http://192.168.1.8:9050/process", {
+            const response = await fetch(`${address}/process`, {
                 method : "POST",
                 headers : {
                     "Content-Type" : "application/json",

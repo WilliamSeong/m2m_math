@@ -1,0 +1,32 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+.pdf-container{
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+    background-color: #5c5c5c;
+}
+
+.pdf-link{
+    width: 100%;
+    height: auto;
+    background: #313639;
+    margin: 0;
+    padding: 0;
+    display: block;
+    font-size: 2rem;
+    color: white;
+    text-align: center;
+}
+
+.pdf-window{
+    width: auto;
+    height: 500px;
+    margin: 0;
+    padding: 0;
+    display: block;
+    border: none;
+}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import PDFViewer from "./components/PDFViewer/PdfViewer";
 
 
 // interface Question{
@@ -9,7 +10,7 @@ import { useState, useEffect } from "react";
 //     correct_answer : String
 // }
 
-const address = "http://192.168.1.8:9050"
+const address = "http://192.168.1.141:9050"
 
 export default function App() {
 
@@ -19,7 +20,6 @@ export default function App() {
     const [currentStudent, setCurrentStudent] = useState(null);
     const [currentObjectives, setCurrentObjectives] = useState([]);
     const [currentPackets, setCurrentPackets] = useState([]);
-    const [pdfUrls, setPdfUrls] = useState();
 
     useEffect(() => {
 
@@ -109,25 +109,6 @@ export default function App() {
         // console.log("Selected objectives:", selectedObjectives);
     }
 
-    async function generatePacket() {
-
-        // console.log("These are the objectives set for generation: ", currentObjectives);
-        const response = await fetch("http://localhost:3000/generate", {
-            method : "POST",
-            headers : {
-                "Content-Type" : "application/json"
-            },
-            body : JSON.stringify({
-                objectiveList : currentObjectives,
-                studentId : currentStudent._id,
-            })
-        })
-
-        const pdfBlob = await response.blob();
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        setQuestions(pdfUrl);
-    }
-
     async function generateTemplatePacket() {
         // console.log("These are the objectives set for generation: ", currentObjectives);
         const response = await fetch(`${address}/generate`, {
@@ -144,28 +125,6 @@ export default function App() {
         const pdfBlob = await response.blob();
         const pdfUrl = URL.createObjectURL(pdfBlob);
         setQuestions(pdfUrl);
-    }
-
-    async function testPDF() {
-        console.log("Testing pdf");
-
-        const response = await fetch(`${address}/pdf`);
-
-        console.log(response)
-
-        const pdfBlob = await response.blob();
-
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-
-        setPdfUrls(pdfUrl);
-    }
-
-    async function testButton() {
-        const response = await fetch("http://192.168.1.103:9050/db");
-
-        const data = await response.json();
-
-        console.log(data);
     }
 
     return (
@@ -200,7 +159,7 @@ export default function App() {
                     )}
                     {currentPackets.map((packetData, index) => (
                         <div key={index}>
-                            <div ><a href={packetData[0]} target="_blank">Packet {index}</a></div>
+                            <PDFViewer url={packetData[0]} count={index}/>
                             <div>
                                 <ul>
                                     {packetData[1].map((submissionData, subIndex) => {
@@ -213,10 +172,8 @@ export default function App() {
                                         const total = scoreInfo.correct + scoreInfo.incorrect;
                                         const score = `${scoreInfo.correct}/${total}`;
                                         
-                                        // Format date: "March 31st"
                                         const options = { month: 'long', day: 'numeric' };
                                         let dateStr = dateObj.toLocaleDateString('en-US', options);
-                                                                                
                                         return (
                                             <li key={subIndex} className="submission-record">
                                                 {dateStr}: {score}
