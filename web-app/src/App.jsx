@@ -134,7 +134,7 @@ export default function App() {
                     {students.map((student, index) => (
                         <div key={index}>
                             <h1>{student.name}</h1>
-                            {/* <p>{student.objectives_inprogress}</p> */}
+                            <p>{console.log(student)}</p>
                             <button onClick={() => {handleCurrentStudent(student._id)}}>{student.name} details</button>
                         </div>
                     ))}

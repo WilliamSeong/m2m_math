@@ -348,7 +348,7 @@ def process():
         data = request.get_json()
         image_uri = data.get("uri")
         # packet_id = data.get("packetId")
-        packet_id = "67ecd0625cc1992c07acf971"
+        packet_id = "67edb6647d8e9b7dfb82fb93"
 
         print(f"Packet Id for grading: {packet_id}")
 
