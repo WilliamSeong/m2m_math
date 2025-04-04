@@ -10,19 +10,21 @@ export default function StudentCard({ studentInfo }) {
         <div className="student-card-container">
             <div className="card-background">
                 <div className="card-name">
-                    <Link to={`/student/profile/${studentInfo._id}`}>{studentInfo.name}</Link>
+                    <Link style={{ textDecoration: 'none', color: 'black'}} to={`/student/profile/${studentInfo._id.$oid}`}>{studentInfo.name}</Link>
                 </div>
-                <div className="card-field-first">
-                    Grade: {studentInfo.grade}
-                </div>
-                <div className="card-field-second">
-                    Objectives: {studentInfo.objectives_inprogress.length}
-                </div>
-                <div className="card-field-third">
-                    Packets: {studentInfo.packets_inprogress.length}
-                </div>
-                <div className="card-field-last">
-                    Later
+                <div className="card-fields">
+                    <div className="card-field-first">
+                        Grade: {studentInfo.grade}
+                    </div>
+                    <div className="card-field-second">
+                        Objectives: {studentInfo.objectives_inprogress.length}
+                    </div>
+                    <div className="card-field-third">
+                        Packets: {studentInfo.packets_inprogress.length}
+                    </div>
+                    <div className="card-field-last">
+                        Later
+                    </div>
                 </div>
             </div>
         </div>

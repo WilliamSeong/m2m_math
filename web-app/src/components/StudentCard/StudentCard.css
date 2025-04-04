@@ -5,40 +5,67 @@
     /* outline: red solid 2px; */
 }
 
-.student-card-container{
-    width: 50%;
-    height: 100vh;
-    background: blanchedalmond;
-    
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
 .card-background{
-    width: 50%;
-    aspect-ratio: 1;
+    width: 16rem;
+    height: 16rem;
+
     background: white;
     border-radius: min(32px, 3vw);
 
+    padding: 10px;
+
     display: grid;
-    grid-template-rows: 2fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 2fr;
 }
 
 .card-name{
-    border-radius: min(32px, 3vw) min(32px, 3vw) 0 0;
     display: flex;
     align-items: center;
-
+    padding-left: 5%;
+    font-size: 2rem;
+    text-decoration: none;
+    transition: 500ms ease-in-out;
 }
 
+.card-name:hover{
+    background: pink;
+    border-radius: min(32px, 3vw);
+}
+
+.card-link{
+    text-decoration: none;
+    color: black;
+}
+
+.card-fields{
+    background: #D9D9D9;
+    
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr 1fr;
+
+    border-radius: min(32px, 3vw);
+}
+
+.card-field-first{
+    border-radius: min(32px, 3vw) min(32px, 3vw) 0 0;
+
+    display: flex;
+    align-items: center;
+    padding-left: 10%;
+}
 .card-field-last{
     border-radius: 0 0 min(32px, 3vw) min(32px, 3vw);
-}
-.card-field-first,
-.card-field-second,
-.card-field-third{
+
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    padding-left: 10%;
+}
+
+.card-field-second,
+.card-field-third
+{
+    display: flex;
+    align-items: center;
+    padding-left: 10%;
 }
 

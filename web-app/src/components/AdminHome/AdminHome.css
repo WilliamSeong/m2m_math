@@ -1,0 +1,36 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* outline: red solid 2px; */
+}
+
+.admin-home-container{
+    background: #5BC6FC;
+    padding: 1rem;
+}
+
+.student-cards{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    place-items: center;
+}
+
+@media (min-width: 640px) {
+    .student-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 768px) {
+    .student-cards {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .student-cards {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}

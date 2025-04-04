@@ -20,12 +20,13 @@ export default function App() {
     const [currentStudent, setCurrentStudent] = useState(null);
     const [currentObjectives, setCurrentObjectives] = useState([]);
     const [currentPackets, setCurrentPackets] = useState([]);
+    const [testPDF, setTestPDF] = useState([]);
 
     useEffect(() => {
 
         async function fetchData() {
 
-            const response = await fetch(`${address}/students`);
+            const response = await fetch(`${address}/student/all`);
 
             const data = await response.json();
 
@@ -37,16 +38,6 @@ export default function App() {
     fetchData();
 
     }, []);
-
-    // async function fetchAllQuestions() {
-    //     const response = await fetch("http://localhost:3000/random5");
-            
-    //     const data = await response.json();
-
-    //     setQuestions(data);
-
-    //     console.log(data);
-    // }
 
     async function handleCurrentStudent(currentStudentId) {
         try {
@@ -127,14 +118,44 @@ export default function App() {
         setQuestions(pdfUrl);
     }
 
+    async function testButton() {
+        const response = await fetch(`${address}/test/1`)
+
+        const data = await response.json()
+
+        console.log(data)
+    }
+
+    async function testButton2() {
+        const response = await fetch(`${address}/test/2`)
+
+        const data = await response.json()
+
+        console.log(data)
+    }
+
+    async function pdf() {
+        const response = await fetch(`${address}/test/pdf`)
+
+        const pdfBlob = await response.blob();
+        const data = URL.createObjectURL(pdfBlob);
+        
+        setTestPDF(data)
+
+        console.log(data)
+    }
+
     return (
         <div>
             {students ? (
                 <div>
+                    <button onClick={pdf}>Generate PDF with Latex</button>
+                    <a href={testPDF} target="_blank">Test PDF</a>
+                    {/* <button onClick={testButton2}>Test 2</button> */}
                     {students.map((student, index) => (
                         <div key={index}>
                             <h1>{student.name}</h1>
-                            <p>{console.log(student)}</p>
+                            {/* <p>{console.log(student)}</p> */}
                             <button onClick={() => {handleCurrentStudent(student._id)}}>{student.name} details</button>
                         </div>
                     ))}
@@ -157,6 +178,7 @@ export default function App() {
                     ) : (
                         <></>
                     )}
+                    {console.log(currentPackets)}
                     {currentPackets.map((packetData, index) => (
                         <div key={index}>
                             <PDFViewer url={packetData[0]} count={index}/>

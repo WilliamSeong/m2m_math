@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 import StudentCard from "./../StudentCard/StudentCard";
+import "./AdminHome.css";
 
 
 const address = "http://192.168.1.141:9050"
@@ -13,7 +14,7 @@ export default function AdminHome() {
 
         async function fetchData() {
 
-            const response = await fetch(`${address}/students`);
+            const response = await fetch(`${address}/student/all`);
 
             const data = await response.json();
 
@@ -27,10 +28,9 @@ export default function AdminHome() {
     }, []);
 
     return(
-        <div>
-            <h1>Hello</h1>
+        <div className="admin-home-container">
             {students ? (
-                <div>
+                <div className="student-cards">
                     {students.map((student, index) => (
                         <StudentCard key={index} studentInfo={student} />
                     ))}
