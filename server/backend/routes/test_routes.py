@@ -26,15 +26,16 @@ def test2():
 @test_bp.route("/pdf")
 def pdf():
     try:
-        pdf = FPDF()
+        pdf = FPDF(format='letter')
         pdf.add_page()
         pdf.set_font("Arial", size=12)
         pdf.cell(200, 10, txt="Test Packet!", align="C")
 
-        question = create_circle_area_question(3, 2)
+        unique_numbers = random.sample(range(0, 20), 5)
 
-        add_question_to_pdf(pdf, question)
-
+        for i, rad in enumerate(unique_numbers):
+            question = create_circle_area_question(rad, i)
+            # add_question_to_pdf(pdf, question)
 
         # Get the PDF content as bytes
         pdf_bytes = pdf.output()
@@ -58,82 +59,71 @@ def pdf():
 
 
 def create_circle_area_question(radius, question_number):
-    # Create a single figure with both question text and diagram
-    fig = plt.figure(figsize=(8, 6))
-    
-    # Set up grid: question text at top, diagram below
-    gs = fig.add_gridspec(2, 1, height_ratios=[1, 5])
-    
-    # Question text area
-    ax_text = fig.add_subplot(gs[0])
-    ax_text.axis('off')
-    ax_text.text(0.5, 0.5, f"{question_number}. What is the area of the circle? Use 3.14 for π and round to the nearest whole number.", 
-                fontsize=12, ha='center', va='center')
-    
-    # Circle diagram area
-    ax_circle = fig.add_subplot(gs[1], aspect='equal')
-    
-    # Draw circle
-    circle = plt.Circle((0, 0), radius, fill=False)
-    ax_circle.add_patch(circle)
-    
-    # Draw radius line
-    ax_circle.plot([0, radius], [0, 0], 'k-')
-    ax_circle.plot(0, 0, 'ko', markersize=4)  # Center dot
-    
-    # Add radius label
-    ax_circle.text(radius/2, 0.2, f"{radius} ft", ha='center')
-    
-    # Set limits and turn off axis
-    ax_circle.set_xlim(-radius-1, radius+1)
-    ax_circle.set_ylim(-radius-1, radius+1)
-    ax_circle.axis('off')
-    
+    # Create figure and axis
+    fig = plt.figure(figsize=(8.5,2.5))
+
     # Add choices at bottom
-    area = math.pi * radius**2
-    rounded_area = round(area)
+    diameter = radius * 2
     
     # Generate plausible wrong answers
     wrong_answers = [
-        round(math.pi * radius),  # Using radius instead of radius squared
-        round(2 * math.pi * radius),  # Using circumference
-        round(area - random.randint(5, 10))  # Just wrong
+        radius,  # Using radius instead of diameter
+        radius/2,  # Using circumference
+        round(diameter - random.randint(1, 2))  # Just wrong
     ]
     
     # All answer choices
-    all_answers = wrong_answers + [rounded_area]
+    all_answers = wrong_answers + [diameter]
     random.shuffle(all_answers)
-    
-    # Find index of correct answer
-    correct_index = all_answers.index(rounded_area)
-    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
-    
-    # Add choices at bottom
-    y_pos = -radius-2
-    x_positions = [-3*radius/2, -radius/2, radius/2, 3*radius/2]
-    
-    for i, choice in enumerate(all_answers):
-        letter = chr(65 + i)  # A, B, C, D
-        ax_circle.text(x_positions[i], y_pos, f"[{letter}]", ha='center')
-        ax_circle.text(x_positions[i], y_pos-1, f"{choice} ft²", ha='center')
-    
-    plt.tight_layout()
-    
-    # Save to BytesIO
-    img_data = BytesIO()
-    plt.savefig(img_data, format='png', dpi=300, bbox_inches='tight')
-    plt.close(fig)
-    img_data.seek(0)
-    
-    return {
-        'image': img_data,
-        'correct_answer': correct_letter,
-        'correct_value': rounded_area
-    }
 
-def add_question_to_pdf(pdf, question):
-    # Add the complete question image (includes question number, text, diagram, and choices)
-    pdf.image(question['image'], x=10, w=180)
-    pdf.ln(10)  # Small space after the question
-    return pdf
+    # Find index of correct answer
+    correct_index = all_answers.index(diameter)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    # Add question text
+    fig.text(0.05, 0.8, f"{question_number}. The area of a circle is {radius**2}$\pi$ cm$^2$. What is the diameter of the circle?", fontsize=12)
+
+    # Add multiple choice options with proper spacing
+    fig.text(0.12, 0.4, f"[A] {all_answers[0]} cm", fontsize=12, family='Helvetica')
+    fig.text(0.32, 0.4, f"[B] {all_answers[1]} cm", fontsize=12, family='Helvetica')
+    fig.text(0.52, 0.4, f"[C] {all_answers[2]} cm", fontsize=12, family='Helvetica')
+    fig.text(0.72, 0.4, f"[D] {all_answers[3]} cm", fontsize=12, family='Helvetica')
+
+    # Remove axes ticks and labels for a cleaner look, if desired
+    # ax.set_xticks([])
+    # ax.set_yticks([])
+    # for spine in ax.spines.values():
+    #     spine.set_visible(False)
+
+    plt.axis('off')
+
+    fig.savefig('diameter.png')
+
+
+    # # Save to BytesIO
+    # img_data = BytesIO()
+    # plt.savefig(img_data, format='png', dpi=300, bbox_inches='tight')
+    # plt.close(fig)
+    # img_data.seek(0)
+    
+    # return {
+    #     'image': img_data,
+    #     'correct_answer': correct_letter,
+    #     'correct_value': diameter
+    # }
+
+    return jsonify({'success' : True})
+
+# def add_question_to_pdf(pdf, question):
+
+#     # Calculate width (8.5 inches minus 1-inch total margins)
+#     page_width = pdf.w  # Total page width in points (1 inch = 72 points)
+#     # print(f"page width: {page_width}")
+#     margin = 12.7  # 0.5 inch = 36 points
+#     usable_width = page_width - (2 * margin)
+
+#     # Add the complete question image (includes question number, text, diagram, and choices)
+#     pdf.image(question['image'], x=margin, w=usable_width)
+#     pdf.ln(10)  # Small space after the question
+#     return pdf
 

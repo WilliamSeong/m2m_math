@@ -10,7 +10,7 @@ import PDFViewer from "./components/PDFViewer/PdfViewer";
 //     correct_answer : String
 // }
 
-const address = "http://192.168.1.141:9050"
+const address = "http://192.168.1.103:9050"
 
 export default function App() {
 
