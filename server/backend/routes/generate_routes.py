@@ -17,7 +17,6 @@ import re
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import numpy as np
 from PIL import Image
 
 from backend.db import get_client
@@ -39,15 +38,31 @@ def generate():
         print(f"Objectives: {objective_list}")
         packet_id = createPacket(client, student_id)
 
-        pdf = FPDF(format="letter")
+        pdf = FPDF(format="letter", unit="in")
+
+        pdf_width = pdf.w
+        pdf_width_usable = pdf.epw
+        print(f"pdf width: {pdf_width}")
+        print(f"pdf effective: {pdf_width_usable}")
+        margin = (pdf_width - pdf_width_usable)/2
+        print(f".75 inch : {margin}")
+        usuable_width = pdf_width - (margin*2)
+        print(f"Usable width: {usuable_width}")
 
         pdf.add_page()
         pdf.set_font("helvetica", size=12)
         # print(f"Packet id: {packet_id}")
-        pdf.cell(200, 10, text=str(packet_id), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+        pdf.cell(pdf_width_usable, .5, text=str(packet_id), align="C", border=1)
+        pdf.ln(.5)
 
         for obj in objective_list:
-            pdf.cell(200, 5, text=obj["name"], new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.cell(pdf_width_usable, .5, text=obj["name"])
+            pdf.ln(.25)
+        pdf.ln(.25)
+        pdf.line(.4, pdf.get_y(), 8.5-.4, pdf.get_y())
+        pdf.ln(.25)
+
+
 
         ans_key = {}
         questions = []
@@ -131,7 +146,9 @@ def generate_diameter_area_question(questions):
 
 def create_diameter_area_question(radius):
     # Create figure and axis
-    fig= plt.figure(1, figsize=(8.5,2.5))
+    fig = plt.figure(1, figsize=(7.7,1))
+
+    fig.patch.set_facecolor('white')
 
     # Add choices at bottom
     diameter = radius * 2
@@ -152,20 +169,20 @@ def create_diameter_area_question(radius):
     correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
 
     # Add question text
-    fig.text(0.05, 0.8, f"The area of a circle is {radius**2}$\pi$ cm$^2$. What is the diameter of the circle?", fontsize=12)
+    fig.text(0.05, 0.8, f"The area of a circle is {radius**2}$\\pi$ cm$^2$. What is the diameter of the circle?", ha='left', fontsize=12)
 
     # Add multiple choice options with proper spacing
-    fig.text(0.12, 0.6, f"[A] {all_answers[0]} cm", fontsize=12)
-    fig.text(0.32, 0.6, f"[B] {all_answers[1]} cm", fontsize=12)
-    fig.text(0.52, 0.6, f"[C] {all_answers[2]} cm", fontsize=12)
-    fig.text(0.72, 0.6, f"[D] {all_answers[3]} cm", fontsize=12)
+    fig.text(0.12, 0.3, f"[A] {all_answers[0]} cm", ha='center', fontsize=12)
+    fig.text(0.32, 0.3, f"[B] {all_answers[1]} cm", ha='center', fontsize=12)
+    fig.text(0.52, 0.3, f"[C] {all_answers[2]} cm", ha='center', fontsize=12)
+    fig.text(0.72, 0.3, f"[D] {all_answers[3]} cm", ha='center', fontsize=12)
 
     # fig.savefig('diameter.png')
     plt.tight_layout(pad=0.1)
 
     # Save to BytesIO
     img_data = BytesIO()
-    plt.savefig(img_data, format='png', dpi=300, bbox_inches='tight')
+    plt.savefig(img_data, format='png', dpi=300)
     plt.close(fig)
     img_data.seek(0)
     
@@ -184,7 +201,7 @@ def generate_circle_area_question(questions):
             questions += [create_circle_area_question(rad)]
 
 def create_circle_area_question(radius):
-    fig, ax = plt.subplots(1, figsize=(8.5,2.5))
+    fig, ax = plt.subplots(1, figsize=(7.7,2.5))
     fig.subplots_adjust(left=.05, right=.3, top=.8, bottom=.2)
 
     # Set background color to white
@@ -203,10 +220,6 @@ def create_circle_area_question(radius):
 
     # Add the circle to the axes
     ax.add_patch(circle)
-
-    # Set the limits of the plot
-    # ax.set_xlim(0, 1)
-    # ax.set_ylim(0, 1)
 
     # Ensure the aspect ratio is equal so that the circle is not distorted
     ax.set_aspect('equal', adjustable='box')
@@ -245,15 +258,15 @@ def create_circle_area_question(radius):
     # plt.tight_layout()
     
     # Right text question and text answers
-    fig.text(.05, .85, f"What is the area of the circle? Use 3.14 for π and round to the nearest whole number.", ha='left', fontsize=12)
-    fig.text(0.12, 0.1, f"[A] {all_answers[0]} ft²", ha='center', fontsize=12)
-    fig.text(0.32, 0.1, f"[B] {all_answers[1]} ft²", ha='center', fontsize=12)
-    fig.text(0.52, 0.1, f"[C] {all_answers[2]} ft²", ha='center', fontsize=12)
-    fig.text(0.72, 0.1, f"[D] {all_answers[3]} ft²", ha='center', fontsize=12)
+    fig.text(.05, .92, f"What is the area of the circle? Use 3.14 for π and round to the nearest whole number.", ha='left', fontsize=12)
+    fig.text(0.12, 0.05, f"[A] {all_answers[0]} ft²", ha='center', fontsize=12)
+    fig.text(0.32, 0.05, f"[B] {all_answers[1]} ft²", ha='center', fontsize=12)
+    fig.text(0.52, 0.05, f"[C] {all_answers[2]} ft²", ha='center', fontsize=12)
+    fig.text(0.72, 0.05, f"[D] {all_answers[3]} ft²", ha='center', fontsize=12)
 
     # Save to BytesIO
     img_data = BytesIO()
-    plt.savefig(img_data, format='png', dpi=300, bbox_inches='tight')
+    plt.savefig(img_data, format='png', dpi=300)
     plt.close(fig)
     img_data.seek(0)
     
@@ -268,25 +281,38 @@ def add_question_to_pdf(pdf, questions, ans_key):
 
     for i, question in enumerate(questions):
         # Calculate width (8.5 inches minus 1-inch total margins)
-        page_width = pdf.w  # Total page width in points (1 inch = 72 points)
-        margin = 12.7
-        usable_width = page_width - (2 * margin)
+        page_width = pdf.epw
+        margin = .4
+
+        # Check if there's enough space on the current page for the image
+        # Get image dimensions
+        img_width = page_width - .25
+        img = Image.open(question['image'])
+        img_height = (img.height / img.width) * img_width
+        
+        # Add some buffer space for the number and padding
+        total_needed_height = img_height + 0.3
+        
+        # Check if we need to add a page break
+        if pdf.get_y() + total_needed_height > pdf.eph:
+            pdf.add_page()
+        
+        # Now add the question number and image together
+        current_y = pdf.get_y()
+
 
         # Add question number in left margin
-        pdf.set_xy(margin - 10, pdf.get_y())  # Position to the left of image
-        pdf.cell(10, 10, f"{i+1}.", 0, 0, 'R')
+        pdf.set_xy(margin - .05, current_y)  # Position to the left of image
+        pdf.cell(.05, .05, f"{i+1}.")
+        # img = Image.open(question['image'])
+        # width, height = img.size
+        # print(f"Question {i+1} has width {width} and height {height}")
 
         # Add the complete question image (includes question number, text, diagram, and choices)
-        # pdf.set_xy(margin, pdf.get_y())  # Reset x position for image
-        img_width, img_height = get_image_dimensions(question['image'])
-        scale = min(1, usable_width / img_width)  # Scale factor
-        pdf.image(question['image'], x=margin, w=img_width * scale)
+        pdf.set_xy(margin, current_y-0.12)  # Reset x position for image
+        pdf.image(question['image'], x=0.65, w=page_width-.25)
+
+        pdf.set_y(current_y + img_height + 0.35)
 
         # Construct answer key
         ans_key[str(i + 1)] = question["correct_answer"]
-
-        pdf.ln(5)  # Small space after the question
-
-def get_image_dimensions(image_path):
-    with Image.open(image_path) as img:
-        return img.width, img.height
