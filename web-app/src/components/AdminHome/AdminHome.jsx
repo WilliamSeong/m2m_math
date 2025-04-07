@@ -4,7 +4,7 @@ import StudentCard from "./../StudentCard/StudentCard";
 import "./AdminHome.css";
 
 
-const address = "http://192.168.1.141:9050"
+const address = "http://192.168.86.92:9050"
 
 export default function AdminHome() {
 
