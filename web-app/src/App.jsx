@@ -39,7 +39,12 @@ export default function App() {
 
     }, []);
 
-    async function handleCurrentStudent(currentStudentId) {
+    async function handleCurrentStudent(currentStudendId) {
+        await handleCurrentStudentDetails(currentStudendId);
+        await handleCurrentStudentPackets(currentStudendId);
+    }
+
+    async function handleCurrentStudentDetails(currentStudentId) {
         try {
             const response = await fetch(`${address}/student/details`, {
                 method : "POST",
@@ -53,9 +58,35 @@ export default function App() {
     
             const data = await response.json();
     
-            const { result, packets } = data;
+            const { details } = data;
 
-            const resultArray = JSON.parse(result);
+            const resultArray = JSON.parse(details);
+
+            // console.log(resultArray);
+    
+            setCurrentStudent(resultArray);
+    
+        } catch(e) {
+            console.log("Student Details fetch error: ", e);
+        }
+    }
+
+    async function handleCurrentStudentPackets(currentStudentId) {
+        try {
+            const response = await fetch(`${address}/student/packets`, {
+                method : "POST",
+                headers : {
+                    "Content-Type" : "application/json",
+                },
+                body : JSON.stringify({
+                    studentId : currentStudentId
+                })
+            });
+    
+            const data = await response.json();
+    
+            const { packets } = data;
+
             const packetsArray = JSON.parse(packets);
 
             // console.log(resultArray);
@@ -80,7 +111,6 @@ export default function App() {
 
                 urls = [...urls, [url, submissions]];
             }
-            setCurrentStudent(resultArray);
             setCurrentPackets(urls);
     
         } catch(e) {
@@ -191,8 +221,8 @@ export default function App() {
                                             : new Date();
                                         
                                         const scoreInfo = submissionData[1];
-                                        const total = scoreInfo.correct + scoreInfo.incorrect;
-                                        const score = `${scoreInfo.correct}/${total}`;
+                                        const total = scoreInfo.correct.length + scoreInfo.incorrect.length;
+                                        const score = `${scoreInfo.correct.length}/${total}`;
                                         
                                         const options = { month: 'long', day: 'numeric' };
                                         let dateStr = dateObj.toLocaleDateString('en-US', options);

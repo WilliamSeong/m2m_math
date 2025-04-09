@@ -125,7 +125,7 @@ def createPacket(client, student_id):
         student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
         result = client["m2m_math_db"]["packets"].insert_one({"student_id" : student_id_obj, "submissions" : [], "date_created" : datetime.now()})
         packet_id = result.inserted_id
-        client["m2m_math_db"]["students"].update_one({"_id": student_id_obj}, {"$push": {"packets_inprogress": packet_id}})
+        client["m2m_math_db"]["students"].update_one({"_id": student_id_obj}, {"$push": {"packets_inprogress": packet_id}, "$set": {"last_assignment": datetime.now()}})
         return packet_id
     except Exception as e:
         return {'error' : e}

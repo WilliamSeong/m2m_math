@@ -1,20 +1,27 @@
 import { Text, View, StyleSheet, Button, TouchableOpacity, Pressable, TextInput } from "react-native";
 import { Image } from 'expo-image';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { useLocalSearchParams } from "expo-router";
 
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 
-const address = "http://192.168.1.141:9050"
+const address = "http://192.168.1.103:9050"
 
-export default function Index() {
+export default function camera() {
     let cameraRef = useRef<CameraView>(null);
 
     const [facing, setFacing] = useState<CameraType>('back');
     const [cameraPermission, requestCameraPermission] = useCameraPermissions();
     const [photo, setPhoto] = useState<string | undefined>();
-    const [packetId, setPacketId] = useState("");
+    const [packetId, setPacketId] = useState<string>("");
+    const {id, studentId} = useLocalSearchParams();
+
+    useEffect(() => {
+        console.log("Camera is for packet: ", id);
+        setPacketId(id as string)
+    }, [])
 
     if(!cameraPermission) {
         return <View />
@@ -59,24 +66,6 @@ export default function Index() {
         setPhoto(imageData);
     }
 
-    const pushToMongo = async () => {
-        try{
-            // console.log("Image uri: ", photo);
-            const response = await fetch(`${address}/camera`, {
-                method : "POST",
-                headers : {
-                    "Content-Type" : "application/json",
-                },
-                body : JSON.stringify({
-                    uri : photo
-                })
-            });
-        } catch(e) {
-            console.log("Fetch error: ", e);
-        }
-    };
-
-
     const process = async () => {
         try{
             const response = await fetch(`${address}/process`, {
@@ -86,7 +75,8 @@ export default function Index() {
                 },
                 body : JSON.stringify({
                     uri : photo,
-                    packetId : packetId
+                    packetId : packetId,
+                    studentId : studentId
                 })
             });
         } catch(e) {
@@ -110,7 +100,6 @@ export default function Index() {
                     style={{ width: 300, aspectRatio: 1 }}
                 />
                 <Button onPress={() => setPhoto(undefined)} title="Take another picture" />
-                <Button onPress={pushToMongo} title="Send to Mongo" />
                 <Button onPress={process} title="Process" />
             </View>
         );

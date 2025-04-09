@@ -16,8 +16,13 @@ def students():
         client = get_client() # Get the client
 
         result = fetchStudents(client)
+
+        print(result)
     
         json_data = dumps(result) # json string the list with dumps (Mongo ObjectId won't jsonify)
+
+        print(json_data)
+
 
         return json_data
     
@@ -47,16 +52,10 @@ def studentDetails():
         # print(f"Here is the client: {client}")
 
         details_result = fetchStudentDetails(client, student_id)
-        packets_result = fetchStudentPackets(client, student_id)
-        submissions_result = getSubmissions(client, packets_result)
-
-        for packet in packets_result:
-            packet["submission_details"] = submissions_result[str(packet["_id"])]
 
         json_data_details = dumps(details_result)
-        json_data_packets = dumps(packets_result)
 
-        return jsonify({'result' : json_data_details, 'packets' : json_data_packets})
+        return jsonify({'details' : json_data_details})
     except Exception as e:
         return jsonify({'error' : e})
     
@@ -67,7 +66,31 @@ def fetchStudentDetails(client, student_id):
     result = client["m2m_math_db"]["students"].find_one({"_id" : student_id_obj})
 
     return result
+    
+@student_bp.route("/packets", methods=['POST'])
+def studentPackets():
+    data = request.get_json() # Get body of post request
+    student_id = data.get("studentId")
 
+    print(f"Fetching student {student_id} packets")
+
+    try:
+        client = get_client()
+
+        # print(f"Here is the client: {client}")
+
+        packets_result = fetchStudentPackets(client, student_id)
+        submissions_result = getSubmissions(client, packets_result)
+
+        for packet in packets_result:
+            packet["submission_details"] = submissions_result[str(packet["_id"])]
+
+        json_data_packets = dumps(packets_result)
+
+        return jsonify({'packets' : json_data_packets})
+    except Exception as e:
+        return jsonify({'error' : e})
+    
 def fetchStudentPackets(client, student_id):
     # print("Checking packets for student id: ", student_id)
     student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
@@ -86,5 +109,6 @@ def getSubmissions(client, packets):
             result = client["m2m_math_db"]["submissions"].find_one({"_id" : submission})
             submissions_list += [[result["datetime"], result["score"]]]
         packets_dict[str(packet["_id"])] = submissions_list
+        
 
     return packets_dict

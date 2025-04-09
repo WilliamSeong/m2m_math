@@ -22,8 +22,8 @@ def process():
 
         data = request.get_json()
         image_uri = data.get("uri")
-        # packet_id = data.get("packetId")
-        packet_id = "67edb6647d8e9b7dfb82fb93"
+        packet_id = data.get("packetId")
+        student_id = data.get("studentId")
 
         print(f"Packet Id for grading: {packet_id}")
 
@@ -31,7 +31,7 @@ def process():
             return jsonify({'error': 'No image URI provided'})
         
         final, final_binary = sheet(image_uri)
-        final_png = numpy_to_uri(final)
+        # final_png = numpy_to_uri(final)
         vis_final = visualize_extraction_regions(final_binary)
         vis_final_png = numpy_to_uri(vis_final)
         student_answers = extract_answers(final_binary)
@@ -42,19 +42,19 @@ def process():
 
         correct, incorrect = grade(student_answers, answer_key)
 
-        pushSubmission(client, packet_id, final_png, vis_final_png, correct, incorrect)
+        pushSubmission(client, packet_id, vis_final_png, correct, incorrect, student_id)
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)})
     
-def pushSubmission(client, packet_id, final_uri, vis_uri, correct, incorrect):
+def pushSubmission(client, packet_id, vis_uri, correct, incorrect, student_id):
     try:
         packet_id_obj = ObjectId(packet_id) if isinstance(packet_id, dict) else ObjectId(packet_id)
+        student_id_obj = ObjectId(student_id) if isinstance(student_id, dict) else ObjectId(student_id)
         document = {
                     "packet_id" : packet_id_obj, 
                     "images" : 
                         {
-                            "original" : final_uri, 
                             "processed" : vis_uri
                         },
                     "score" :
@@ -67,11 +67,13 @@ def pushSubmission(client, packet_id, final_uri, vis_uri, correct, incorrect):
         result = client["m2m_math_db"]["submissions"].insert_one(document)
         submission_id = result.inserted_id
         client["m2m_math_db"]["packets"].update_one({"_id": packet_id_obj}, {"$push": {"submissions": submission_id}})
+        client["m2m_math_db"]["students"].update_one({"_id": student_id_obj}, {"$set": {"last_submission": datetime.now()}})
         return result
     except Exception as e:
         print("Image insert error for questions: ", e)
         return None
 
+# Convert processed image arrays back to uri for mongo
 def numpy_to_uri(image_array):
     # Encode the image as PNG/JPEG
     success, encoded_img = cv.imencode('.png', image_array)
@@ -86,18 +88,17 @@ def numpy_to_uri(image_array):
     
     return img_uri
 
-
 def grade(answers, answer_key):
-    correct = 0
-    incorrect = 0
+    correct = []
+    incorrect = []
     for key, value in answer_key.items():
         print(f"question {key}: answer key-{value} answer-{answers[key]}")
         student_answer = value
         correct_answer = answers[key]
         if (student_answer == correct_answer):
-            correct += 1
+            correct += [key]
         else:
-            incorrect += 1
+            incorrect += [key]
     
     print(f"Correct: {correct}")
     print(f"Incorrect: {incorrect}")
@@ -313,7 +314,6 @@ def sheet(uri):
                 # Write the row and add a newline
                 f.write(row_str + '\n')
                 f.write('\n')
-
         return final, final_binary
     else:
         return jsonify({'error': 'Unsupported URI format'})
@@ -338,3 +338,6 @@ def order_points(pts):
     rect[3] = pts[np.argmax(diff)]
 
     return rect.astype('int').tolist()
+
+def generate_score_report():
+    print("hello")
