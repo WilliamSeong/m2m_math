@@ -119,6 +119,7 @@ export default function StudentProfile() {
 
             // console.log("Parsed packets", parsedData)
 
+            // Shouldn't I just project this in the query then?
             let urls : Array<[string, string, Array<[Date, Score]>]> = [];
     
             for (const packet of parsedData ) {
@@ -154,28 +155,6 @@ export default function StudentProfile() {
         // })
     }
     
-    function formatDate(isoString : string) {
-        const date = new Date(isoString);
-        
-        // Force UTC time interpretation
-        const month = date.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
-        const day = date.getUTCDate();
-        const year = date.getUTCFullYear();
-        
-        // Get time components
-        const hours = date.getUTCHours();
-        const minutes = date.getUTCMinutes();
-        const period = hours >= 12 ? 'PM' : 'AM';
-
-        // Convert to 12-hour format
-        const formattedHours = hours % 12 || 12;
-        
-        // Format time with leading zeros for minutes
-        const formattedMinutes = minutes.toString().padStart(2, '0');
-        
-        return `${month} ${day}, ${year} (${formattedHours}:${formattedMinutes} ${period})`;
-    }
-
     const onModalClose = () => {
         setModalVisible(false);
     }

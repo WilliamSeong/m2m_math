@@ -37,8 +37,6 @@ export default function index() {
 
     const router = useRouter();
     const [students, setStudents] = useState<Student[]>()
-    const [assignment, setAssignment] = useState<Date>()
-    const [submission, setSubmission] = useState<Date>()
 
     useEffect(() => {
 
@@ -48,9 +46,9 @@ export default function index() {
 
             const data = await response.json();
 
-            console.log(data)
+            // console.log(data)
 
-            console.log("last_submission Data: ", data[0].last_submission.$date);
+            // console.log("last_submission Data: ", data[0].last_submission.$date);
 
             setStudents(data);
         };
@@ -126,7 +124,7 @@ const styles = StyleSheet.create({
         padding : 10
     },
     cardContent : {
-        backgroundColor : 'white',
+        backgroundColor : 'rgba(255,255,255, 0.5)',
         height : windowHeight * .11,
         borderRadius : 10,
         padding : 5,

@@ -17,12 +17,11 @@ def students():
 
         result = fetchStudents(client)
 
-        print(result)
+        # print(result)
     
         json_data = dumps(result) # json string the list with dumps (Mongo ObjectId won't jsonify)
 
-        print(json_data)
-
+        # print(json_data)
 
         return json_data
     

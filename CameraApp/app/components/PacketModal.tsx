@@ -3,7 +3,6 @@ import { PropsWithChildren } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router'
 
-
 interface Date {
     $date : string
 }

@@ -5,6 +5,7 @@ import io
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 from io import BytesIO
 import math
@@ -31,99 +32,68 @@ def pdf():
         pdf.set_font("Arial", size=12)
         pdf.cell(200, 10, txt="Test Packet!", align="C")
 
-        unique_numbers = random.sample(range(0, 20), 5)
+        unique = random.sample(range(0, 20), 1)
 
-        for i, rad in enumerate(unique_numbers):
-            question = create_circle_area_question(rad, i)
-            # add_question_to_pdf(pdf, question)
+        for _ in range(5):
+            a = random.randint(1,5)
+            if a <= 5:
+                b = random.randint(a, 10)
+                c = random.randint(1,10)
+            else:
+                b = 1
+                c = random.randint(a, 10)
 
-        # Get the PDF content as bytes
-        pdf_bytes = pdf.output()
-        # print(f"pdf in byte form: {pdf_bytes}")
 
-        # Create a blob-like object using io.BytesIO
-        pdf_blob = io.BytesIO(pdf_bytes)
-        # print(f"pdf blob form: {pdf_blob}")
-        # Reset the file pointer to the beginning
-        pdf_blob.seek(0)
-        
-        # Return the PDF as a downloadable file
-        return send_file(
-            pdf_blob,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name='document.pdf'
-        )
+            question = create_question(a, b, c)
+
     except Exception as e:
         return jsonify({'error' : e})
 
-
-def create_circle_area_question(radius, question_number):
+def create_question(a, b, c):
     # Create figure and axis
-    fig = plt.figure(figsize=(8.5,2.5))
 
-    # Add choices at bottom
-    diameter = radius * 2
-    
-    # Generate plausible wrong answers
-    wrong_answers = [
-        radius,  # Using radius instead of diameter
-        radius/2,  # Using circumference
-        round(diameter - random.randint(1, 2))  # Just wrong
-    ]
-    
-    # All answer choices
-    all_answers = wrong_answers + [diameter]
-    random.shuffle(all_answers)
+    # Create fig that is 7.7 in. wide and 3 in. tall
+    if a > b:
+        fig = plt.figure(figsize=(7.7,2))
+    else:
+        fig = plt.figure(figsize=(7.7,3))
 
-    # Find index of correct answer
-    correct_index = all_answers.index(diameter)
-    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+    # Add axes that is 0.1 from left, 0.2 from top, 0.7 width of fig and .5 heigh of fig
+    ax = fig.add_axes([0.1, 0.2, 0.7, .5 ])
 
-    # Add question text
-    fig.text(0.05, 0.8, f"{question_number}. The area of a circle is {radius**2}$\pi$ cm$^2$. What is the diameter of the circle?", fontsize=12)
+    # Set limits of ax
+    ax.set_xlim(0, 6)
+    ax.set_ylim(0, 3.5)
+
+    # Question options
+    questions = [
+                    "What is the actual length of the entire dock?",
+                    "What is the actual width of the dock's walkway?",
+                    "What is the actual length of the dock's walkway?"
+                ]
+
+    # Plot question
+    fig.text(0.05, 0.8, f"A catalog has a scale drawing of a floating dock. The dock is a regular octagon attached to a rectangular walkway. The scale drawing has a scale of 1 inch?", ha='left', fontsize=12, wrap=True)
 
     # Add multiple choice options with proper spacing
-    fig.text(0.12, 0.4, f"[A] {all_answers[0]} cm", fontsize=12, family='Helvetica')
-    fig.text(0.32, 0.4, f"[B] {all_answers[1]} cm", fontsize=12, family='Helvetica')
-    fig.text(0.52, 0.4, f"[C] {all_answers[2]} cm", fontsize=12, family='Helvetica')
-    fig.text(0.72, 0.4, f"[D] {all_answers[3]} cm", fontsize=12, family='Helvetica')
+    fig.text(0.12, 0.1, f"[A]", fontsize=12, family='Helvetica')
+    fig.text(0.32, 0.1, f"[B]", fontsize=12, family='Helvetica')
+    fig.text(0.52, 0.1, f"[C]", fontsize=12, family='Helvetica')
+    fig.text(0.72, 0.1, f"[D]", fontsize=12, family='Helvetica')
 
-    # Remove axes ticks and labels for a cleaner look, if desired
+    # Clean up
+    # Get rid of x and y axis
     # ax.set_xticks([])
     # ax.set_yticks([])
-    # for spine in ax.spines.values():
-    #     spine.set_visible(False)
+    # Get rid of ax border
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    # Add grid
+    ax.grid(True, linestyle='-', alpha=0.7)
 
-    plt.axis('off')
 
-    fig.savefig('diameter.png')
-
-
-    # # Save to BytesIO
-    # img_data = BytesIO()
-    # plt.savefig(img_data, format='png', dpi=300, bbox_inches='tight')
-    # plt.close(fig)
-    # img_data.seek(0)
-    
-    # return {
-    #     'image': img_data,
-    #     'correct_answer': correct_letter,
-    #     'correct_value': diameter
-    # }
+    fig.savefig('question.png')
 
     return jsonify({'success' : True})
-
-# def add_question_to_pdf(pdf, question):
-
-#     # Calculate width (8.5 inches minus 1-inch total margins)
-#     page_width = pdf.w  # Total page width in points (1 inch = 72 points)
-#     # print(f"page width: {page_width}")
-#     margin = 12.7  # 0.5 inch = 36 points
-#     usable_width = page_width - (2 * margin)
-
-#     # Add the complete question image (includes question number, text, diagram, and choices)
-#     pdf.image(question['image'], x=margin, w=usable_width)
-#     pdf.ln(10)  # Small space after the question
-#     return pdf
-

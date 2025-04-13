@@ -1,15 +1,6 @@
 import { useState, useEffect } from "react";
 import PDFViewer from "./components/PDFViewer/PdfViewer";
 
-
-// interface Question{
-//     objective : String;
-//     level : String;
-//     question : String;
-//     answer : String[];
-//     correct_answer : String
-// }
-
 const address = "http://192.168.1.103:9050"
 
 export default function App() {
@@ -179,7 +170,7 @@ export default function App() {
         <div>
             {students ? (
                 <div>
-                    <button onClick={pdf}>Generate PDF with Latex</button>
+                    <button onClick={pdf}>Generate Test Question</button>
                     <a href={testPDF} target="_blank">Test PDF</a>
                     {/* <button onClick={testButton2}>Test 2</button> */}
                     {students.map((student, index) => (
@@ -193,6 +184,9 @@ export default function App() {
             ) : <p>Loading...</p>}
             {currentStudent ? (
                 <div>
+                    <br />
+                    <hr />
+                    <br />
                     {currentStudent.objectives_inprogress.map((obj, index) => (
                         <div key={index}>
                             {/* {console.log(obj)} */}
@@ -208,7 +202,7 @@ export default function App() {
                     ) : (
                         <></>
                     )}
-                    {console.log(currentPackets)}
+                    {/* {console.log(currentPackets)} */}
                     {currentPackets.map((packetData, index) => (
                         <div key={index}>
                             <PDFViewer url={packetData[0]} count={index}/>

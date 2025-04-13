@@ -1,7 +1,9 @@
 // components/CustomTabBar.tsx
-import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, Dimensions } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+
+const windowHeight = Dimensions.get('window').height
 
 export default function CustomTabBar() {
     const router = useRouter();
@@ -46,9 +48,9 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderTopWidth: 2,
         borderTopColor: '#eee',
+        height : windowHeight * 0.1
     },
     tab : {
-        flexDirection : 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 10,
