@@ -19,10 +19,13 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from PIL import Image
+import numpy as np
 
 from backend.db import get_client
 
 generate_bp = Blueprint("generate", __name__)
+
+# There are 1382 obj
 
 @generate_bp.route("", methods=['POST'])
 def generate():
@@ -35,29 +38,19 @@ def generate():
     try:
         client = get_client()
 
-        # result = generateQuestions(client, objective_list)
-        print(f"Objectives: {objective_list}")
         packet_id = createPacket(client, student_id)
-
-        # print(f"Packet Id {packet_id}")
 
         pdf = FPDF(format="letter", unit="in")
 
         pdf_width = pdf.w
         pdf_width_usable = pdf.epw
-        # print(f"pdf width: {pdf_width}")
-        # print(f"pdf effective: {pdf_width_usable}")
         margin = (pdf_width - pdf_width_usable)/2
-        # print(f".75 inch : {margin}")
         usuable_width = pdf_width - (margin*2)
-        # print(f"Usable width: {usuable_width}")
 
         pdf.add_page()
-        pdf.set_font("helvetica", size=12)
+        pdf.set_font("Helvetica", size=12)
 
         initializePage(pdf, packet_id, student_id, usuable_width)
-
-        pdf.line(.4, pdf.get_y(), 8.5-.4, pdf.get_y())
         for obj in objective_list:
             pdf.cell(pdf_width_usable, .5, text=obj["name"])
             pdf.ln(.25)
@@ -71,7 +64,6 @@ def generate():
         factory = QuestionFactory(questions)
 
         for question in objective_list:
-            print(question["id"]["$oid"])
             factory.generate_question(question["id"]["$oid"])
         
         random.shuffle(questions)
@@ -80,15 +72,12 @@ def generate():
         
         # Get the PDF content as bytes
         pdf_bytes = pdf.output()
-        # print(f"pdf in byte form: {pdf_bytes}")
-
-        print(packet_id)
 
         addPacketContent(client, packet_id, pdf_bytes, ans_key)
 
         # Create a blob-like object using io.BytesIO
         pdf_blob = io.BytesIO(pdf_bytes)
-        # print(f"pdf blob form: {pdf_blob}")
+
         # Reset the file pointer to the beginning
         pdf_blob.seek(0)
         
@@ -117,18 +106,16 @@ def initializePage(pdf, packet_id, student_id, width):
     
     # Second cell (top right)
     pdf.cell(right_cell_width, 0.5, text=f"Student: {str(student_id['$oid'])}", align="R", ln=1)
+    pdf.line(.4, pdf.get_y(), 8.5-.4, pdf.get_y())
 
-    pdf.set_y(starting_y + 0.5)  # Move down by height of cell
+    pdf.set_y(starting_y + .5)  # Move down by height of cell
 
-    
 def createPacket(client, student_id):
     try:
-        print(f"Creating packet document for student {student_id}")
         student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
         result = client["m2m_math_db"]["packets"].insert_one({"student_id" : student_id_obj, "submissions" : [], "date_created" : datetime.now()})
         packet_id = result.inserted_id
         client["m2m_math_db"]["students"].update_one({"_id": student_id_obj}, {"$push": {"packets_inprogress": packet_id}, "$set": {"last_assignment": datetime.now()}})
-        print(f"createPacket packet id {packet_id}")
         return packet_id
     except Exception as e:
         return {'error' : e}
@@ -136,9 +123,45 @@ def createPacket(client, student_id):
 def addPacketContent(client, packet_id, packet, ans_key):
     mongo_packet = Binary(packet)
     packet_id_obj = ObjectId(packet_id['$oid']) if isinstance(packet_id, dict) else ObjectId(packet_id)
-    # print(f"addPacket packed id: {packet_id}")
     result = client["m2m_math_db"]["packets"].update_one({"_id" : packet_id_obj}, {'$set' : {"content" : mongo_packet, "answer_key" : ans_key}})
     return result
+
+def add_question_to_pdf(pdf, questions, ans_key, packet_id, student_id, width):
+    print(f"There are {len(questions)} questions")
+    for i, question in enumerate(questions):
+        # Calculate width (8.5 inches minus 1-inch total margins)
+        page_width = pdf.epw
+        margin = .4
+
+        # Check if there's enough space on the current page for the image
+        # Get image dimensions
+        img_width = page_width - .25
+        img = Image.open(question['image'])
+        img_height = (img.height / img.width) * img_width
+        
+        # Add some buffer space for the number and padding
+        total_needed_height = img_height + 0.2
+        
+        # Check if we need to add a page break
+        if pdf.get_y() + total_needed_height > pdf.eph:
+            pdf.add_page()
+            initializePage(pdf, packet_id, student_id, width)
+        
+        # Now add the question number and image together
+        current_y = pdf.get_y() + .25
+
+        # Add question number in left margin
+        pdf.set_xy(margin - .05, current_y)  # Position to the left of image
+        pdf.cell(.05, .05, f"{i+1}.")
+        
+        # Add the complete question image (includes question number, text, diagram, and choices)
+        pdf.set_xy(margin, current_y-0.12)  # Reset x position for image
+        pdf.image(question['image'], x=0.65, w=page_width-.25)
+
+        pdf.set_y(current_y + img_height + 0.1)
+
+        # Construct answer key
+        ans_key[str(i + 1)] = question["correct_answer"]
 
 class QuestionFactory:
     def __init__(self, questions):
@@ -147,7 +170,12 @@ class QuestionFactory:
             self.generators = {
                 '67f02b21cc26b50fa38d3145': generate_circle_area_question,
                 '67f1648ccc26b50fa38d3163' : generate_diameter_area_question,
-                '67f684becc26b50fa38d31a4' : generate_dock_scale_question
+                '67f684becc26b50fa38d31a4' : generate_dock_scale_question,
+                "67fb3159ee43b6ac0569c485" : generate_ratio_two_lengths_question,
+                "67fbfb4eee43b6ac0569c488" : generate_geometric_scale_drawing_area_question,
+                "67fc451aee43b6ac0569c490" : generate_ratio_scale_drawing_figure_question,
+                "67fca2f6ee43b6ac0569c495" : generate_triangle_from_angles_sides_question,
+                "67fd763cee43b6ac0569c49d" : generate_3d_prism_slice_question
                 # Add more question handlers
             }
 
@@ -159,6 +187,51 @@ class QuestionFactory:
             print(f"Handler exists for id {question_id}")
         else:
             print(f"Handler does not exist for id {question_id}")
+
+def intify(value):
+    return int(value) if (value == int(value)) else round(value, 2)
+
+def addIntChoices(fig, choices, unit):
+        fig.text(0.12, 0.1, f"[A] {intify(choices[0])} {unit}", ha='center', fontsize=12, family='serif')
+        fig.text(0.32, 0.1, f"[B] {intify(choices[1])} {unit}", ha='center', fontsize=12, family='serif')
+        fig.text(0.52, 0.1, f"[C] {intify(choices[2])} {unit}", ha='center', fontsize=12, family='serif')
+        fig.text(0.72, 0.1, f"[D] {intify(choices[3])} {unit}", ha='center', fontsize=12, family='serif')
+
+def addStrChoices(fig, choices):
+        fig.text(0.12, 0.1, f"[A] {choices[0]}", ha='center', fontsize=12, family='serif')
+        fig.text(0.32, 0.1, f"[B] {choices[1]}", ha='center', fontsize=12, family='serif')
+        fig.text(0.52, 0.1, f"[C] {choices[2]}", ha='center', fontsize=12, family='serif')
+        fig.text(0.72, 0.1, f"[D] {choices[3]}", ha='center', fontsize=12, family='serif')
+
+def addQuestion(fig, question):
+        fig.text(0.01, 0.97,
+                question, 
+                ha='left',
+                va='top',
+                fontsize=12,
+                wrap=True,
+                family='serif'
+            )
+
+def cleanAx(ax):
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+
+def saveQuestion(id, fig, correct_letter, correct_value):
+    img_data = BytesIO()
+    plt.savefig(img_data, format='png', dpi=300)
+    plt.close(fig)
+    img_data.seek(0)
+
+    return {
+        'id' : id,
+        'image': img_data,
+        'correct_answer': correct_letter,
+        'correct_value': correct_value
+    }
 
 def generate_dock_scale_question(questions):
     for _ in range(5):
@@ -180,18 +253,6 @@ def create_dock_scale_question(full_length, walkway_width, walkway_length, feet_
     # Set limits of ax
     ax.set_xlim(0, 6)
     ax.set_ylim(0, 3.5)
-
-    # Clean up
-    # Get rid of x and y axis
-    ax.set_xticks([])
-    ax.set_yticks([])
-    # Get rid of ax border
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    # Add grid
-    # ax.grid(True, linestyle='-', alpha=0.7)
 
     # Plot Rectangle
     walkway = patches.Rectangle((0.5, 1), 2, 1, linewidth=1, edgecolor='black', facecolor='none')
@@ -233,9 +294,6 @@ def create_dock_scale_question(full_length, walkway_width, walkway_length, feet_
                     "What is the actual length of the dock's walkway?"
                 ]
 
-    # Plot question
-    fig.text(0.05, 0.8, f"A catalog has a scale drawing of a floating dock. The dock is a regular octagon attached to a rectangular walkway. The scale drawing has a scale of 1 inch:{feet_ratio} feet. {questions[question]}", ha='left', fontsize=12, wrap=True)
-
     # Find correct answer
     if question == 0:
         answer = full_length * feet_ratio
@@ -272,24 +330,864 @@ def create_dock_scale_question(full_length, walkway_width, walkway_length, feet_
     correct_index = all_answers.index(answer)
     correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
 
-    # Add multiple choice options with proper spacing
-    fig.text(0.12, 0.1, f"[A] {all_answers[0]} in", fontsize=12, family='Helvetica')
-    fig.text(0.32, 0.1, f"[B] {all_answers[1]} in", fontsize=12, family='Helvetica')
-    fig.text(0.52, 0.1, f"[C] {all_answers[2]} in", fontsize=12, family='Helvetica')
-    fig.text(0.72, 0.1, f"[D] {all_answers[3]} in", fontsize=12, family='Helvetica')
+    problem = f"A catalog has a scale drawing of a floating dock. The dock is a regular octagon attached to a rectangular walkway. The scale drawing has a scale of 1 inch:{feet_ratio} feet. {questions[question]}"
 
-    # Save to BytesIO
-    img_data = BytesIO()
-    plt.savefig(img_data, format='png', dpi=300)
-    plt.close(fig)
-    img_data.seek(0)
+    addQuestion(fig, problem)
+
+    addIntChoices(fig, all_answers, "in")
+
+    cleanAx(ax)
+
+    return saveQuestion(81, fig, correct_letter, answer)
+
+def generate_ratio_two_lengths_question(questions):
+    for _ in range(5):
+            a = random.randint(2,10)
+            if a <= 5:
+                sample = random.sample(range(a+1, 10), 2)
+                b = sample[0]
+                c = sample[1]
+            else:
+                b = 1
+                c = random.randint(a + 1, 11)
+
+            real = random.randint(15, 60)
+
+            questions += [create_ratio_two_lengths_question(a, b, c, real)]
+
+def create_ratio_two_lengths_question(a, b, c, real):
+    # Create figure and axis
+
+    # Create fig that is 7.7 in. wide and 3 in. tall
+    if a > b:
+        fig = plt.figure(figsize=(7.7,3))
+        # Define the coordinates of the trapezoid
+        width = 6  # width of the base
+        height = 4  # height of the trapezoid
+        top_width = 4  # width of the top side
+
+        # Add axes that is 0.1 from left, 0.2 from bottom, 0.7 width of fig and .5 heigh of fig
+        ax = fig.add_axes([0.1, 0.2, 0.7, .4 ])
+
+        # Set limits of ax
+        ax.set_xlim(0, 6)
+        ax.set_ylim(0, 5)
+
+    else:
+        fig = plt.figure(figsize=(7.7,2))
+        # Define the coordinates of the trapezoid
+        width = 4.5  # width of the base
+        height = 2  # height of the trapezoid
+        top_width = 3  # width of the top side
+
+        ax = fig.add_axes([0.1, 0.3, 0.7, .4])
+
+        # Set limits of ax
+        ax.set_xlim(0, 5)
+        ax.set_ylim(0, 4)
+
+    # Draw the trapezoid outline
+    trapezoid_points = [(0, 1), ((width / 2) - (top_width / 2), height + 1), ((width / 2) + (top_width / 2), height + 1), (width, 1)]
+    trapezoid = patches.Polygon(trapezoid_points, closed=True, linewidth=1, edgecolor='black', facecolor='none')
+    ax.add_patch(trapezoid)
+
+    # Plot partitions
+    def add_detail(count):
+        ax.plot([(width / 2) + (top_width / 2), (width / 2) + (top_width / 2)], [height + 1, 1],  'k-', linewidth=1)
+        for i in range(count):
+            increment = i*(top_width / count)
+            ax.plot([(width / 2) - (top_width / 2) + increment, (width / 2) - (top_width / 2) + increment + .5], [height + 1, 1],  'k-', linewidth=1)
+            ax.plot([(width / 2) - (top_width / 2) + increment, (width / 2) - (top_width / 2) + increment], [height + 1, 1],  'k-', linewidth=1)
+    if a > b:
+        add_detail(8)
+    else:
+        add_detail(5)
     
-    return {
-        'id' : 81,
-        'image': img_data,
-        'correct_answer': correct_letter,
-        'correct_value': answer
-    }
+    # Plot dimensions
+    if a > b:
+        ax.text(5.1, 2.3, f'a', ha='center', fontsize='small', fontstyle='italic')
+        ax.text(4.75, 4.2, f'b', ha='center', fontsize='small', fontstyle='italic')
+        ax.text(5.4, .5, f'c', ha='center', fontsize='small', fontstyle='italic')
+    else:
+        ax.text(3.8, 1.7, f'a', ha='center', fontsize='small', fontstyle='italic')
+        ax.text(3.5, 3.2, f'b', ha='center', fontsize='small', fontstyle='italic')
+        ax.text(4, 0.5, f'c', ha='center', fontsize='small', fontstyle='italic')
+
+    # Question options
+    questions = [
+                    ["a", a],
+                    ["b", b],
+                    ["c", c]
+                ]
+    
+    choices = random.sample(questions, 2)
+
+    # Answer
+    answer = round(real * (choices[1][1]/choices[0][1]), 1)
+
+    # Wrong Answers
+    wrong_answers = [
+                            round(real * (choices[0][1]/choices[1][1]), 1),
+                            real,
+                            real + choices[1][1]
+                        ]
+    
+    # All answer choices
+    all_answers = wrong_answers + [answer]
+    random.shuffle(all_answers)
+
+    # Find index of correct answer
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    problem = f"An engineer sketches a scale drawing of a bridge. In the drawing, the ratio of beam {choices[0][0]}'s length to beam {choices[1][0]}'s length is {choices[0][1]}:{choices[1][1]}. The actual length of beam {choices[0][0]} will be {real} m. What will be the actual length of beam {choices[1][0]} ?"
+    addQuestion(fig, problem)
+
+    addIntChoices(fig, all_answers, "m")
+
+    cleanAx(ax)
+
+    return saveQuestion(82, fig, correct_letter, answer)
+
+def generate_geometric_scale_drawing_area_question(questions):
+    for _ in range(5):
+        rand = random.randint(20, 41)
+        kitchen_length = living_length = int(rand * .25) if (rand * .25 == int(rand * .25)) else rand * .25
+        bedroom_width = bedroom_length = dining_length = int(rand//2 * .25) if (rand//2 * .25 == int(rand//2 * .25)) else rand//2 * .25
+        kitchen_width = int(rand // 3 * .25) if (rand // 3 * .25 == int(rand // 3 * .25)) else rand // 3 * .25
+
+        scale = random.randint(2, 10)
+        questions += [create_geometric_scale_drawing_area_question(kitchen_length, kitchen_width, bedroom_width, bedroom_length, living_length, dining_length, scale)]
+
+def create_geometric_scale_drawing_area_question(kitchen_length, kitchen_width, bedroom_width, bedroom_length, living_length, dining_length, scale):
+    # Create fig that is 7.7 in. wide and 3 in. tall
+    fig = plt.figure(figsize=(7.7,3))
+    # Add axes that is 0.1 from left, 0.2 from bottom, 0.7 width of fig and .5 heigh of fig
+    ax = fig.add_axes([0.1, 0.2, 0.6, .6 ])
+
+    # Set limits of ax
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 5)
+
+    # Draw the blueprint
+    blueprint_points = [(1, 1), (1, 3), (3, 3), (3, 4), (9, 4), (9, 1)]
+    blueprint = patches.Polygon(blueprint_points, closed=True, linewidth=1, edgecolor='black', facecolor='none')
+    ax.add_patch(blueprint)
+
+    # Plot partitions
+    # Bedroom Wall
+    ax.plot([3, 3],[1, 2.1], 'k-', linewidth=1)
+    ax.plot([3, 3],[2.7, 3], 'k-', linewidth=1)
+
+    # Bathroom/Kitchen Wall
+    ax.plot([3, 3.2],[3, 3], 'k-', linewidth=1)
+    ax.plot([3.8, 5.8],[3, 3], 'k-', linewidth=1)
+    ax.plot([6.5, 8],[3, 3], 'k-', linewidth=1)
+    ax.plot([8.7, 9],[3, 3], 'k-', linewidth=1)
+
+    # Bathroom-Kitchen inbetween Wall
+    ax.plot([5, 5],[3, 4], 'k-', linewidth=1)
+
+    # Dining Room Wall
+    ax.plot([7, 7],[1, 2], 'k-', linewidth=1)
+    ax.plot([7, 7],[2.7, 3], 'k-', linewidth=1)
+
+    # Plot labels
+    ax.text(4, 3.4, f'Bathroom', ha='center', fontsize='small')
+    ax.text(7, 3.4, f'Kitchen', ha='center', fontsize='small')
+    ax.text(2, 1.9, f'Bedroom', ha='center', fontsize='small')
+    ax.text(5, 1.9, f'Living Room', ha='center', fontsize='small')
+    ax.text(8, 1.9, f'Dining Room', ha='center', fontsize='small')
+
+    # Plot dimensions
+    ax.plot([1, 9], [.7, .7], 'k-', linewidth=1)
+    ax.plot([1, 1], [.8, .6], 'k-', linewidth=1)
+    ax.plot([3, 3], [.8, .6], 'k-', linewidth=1)
+    ax.plot([7, 7], [.8, .6], 'k-', linewidth=1)
+    ax.plot([9, 9], [.8, .6], 'k-', linewidth=1)
+
+    ax.plot([.7, .7], [1, 3], 'k-', linewidth=1)
+    ax.plot([.6, .8], [3, 3], 'k-', linewidth=1)
+    ax.plot([.6, .8], [1, 1], 'k-', linewidth=1)
+
+    ax.plot([9.3, 9.3], [3, 4], 'k-', linewidth=1)
+    ax.plot([9.2, 9.4], [4, 4], 'k-', linewidth=1)
+    ax.plot([9.2, 9.4], [3, 3], 'k-', linewidth=1)
+
+    ax.plot([5, 9], [4.3, 4.3], 'k-', linewidth=1)
+    ax.plot([5, 5], [4.2, 4.4], 'k-', linewidth=1)
+    ax.plot([9, 9], [4.2, 4.4], 'k-', linewidth=1)
+
+    # Plot dimension labels
+    ax.text(7, 4.5, f'{kitchen_length} in.', ha='center', va='center', fontsize='small')
+    ax.text(10, 3.5, f'{kitchen_width} in.', ha='center', va='center', fontsize='small')
+    ax.text(0, 2, f'{bedroom_width} in.', ha='center', va='center', fontsize='small')
+    ax.text(2, 0.4, f'{bedroom_length} in.', ha='center', va='center', fontsize='small')
+    ax.text(5, 0.4, f'{living_length} in.', ha='center', va='center', fontsize='small')
+    ax.text(8, 0.4, f'{dining_length} in.', ha='center', va='center', fontsize='small')
+
+    # answer
+    answer = (scale * scale * (living_length + dining_length) * (kitchen_width + bedroom_width)) + (scale * scale * bedroom_width * bedroom_length)
+
+    # wrong answers
+    wrong_answers = [
+                        ((living_length + dining_length) * (kitchen_width + bedroom_width)) + (bedroom_width * bedroom_length) * scale,
+                        ((bedroom_length + living_length + dining_length) * scale) * ((bedroom_width + kitchen_width) * scale),
+                        ((living_length + dining_length) * scale) + ((kitchen_width + bedroom_width) * scale)
+                    ]
+    
+    # All answer choices
+    all_answers = wrong_answers + [answer]
+    random.shuffle(all_answers)
+
+    # Find index of correct answer
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    problem = f"The scale drawing below shows the floor plan of an apartment. The scale is 1 inch:{scale} feet. What is the actual area of the apartment?"
+    addQuestion(fig, problem)
+
+    addIntChoices(fig, all_answers, "ft\u00B2")
+
+    cleanAx(ax)
+    
+    return saveQuestion(83, fig, correct_letter, answer)
+
+def generate_ratio_scale_drawing_figure_question(questions):
+        for _ in range(5):
+            length = random.randint(2,10)
+            width = random.randint(-1,1) + length
+            ratio = random.randint(2,10)
+            questions += [create_ratio_scale_drawing_figure_question(length, width, ratio)]
+
+def create_ratio_scale_drawing_figure_question(length, width, ratio):
+    # Create fig that is 7.7 in. wide and 3 in. tall
+    fig = plt.figure(figsize=(7.7,3))
+    # Add axes that is 0.1 from left, 0.2 from bottom, 0.7 width of fig and .5 heigh of fig
+    ax = fig.add_axes([0.1, 0.2, 0.6, .6 ])
+
+    # Set limits of ax
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 5)
+
+    # Question options
+    questions = [
+                    'basement',
+                    'living room',
+                    'kitchen',
+                    'bedroom',
+                    'dining room'
+                ]
+    question = random.choice(questions)
+
+    if length > width:
+        # Draw the rectangle
+        rectangle_points = [(1, 1), (1,4), (5, 4), (5, 1)]
+        ax.text(3, 4.1, f"{length} in.", ha='center', fontsize='small')
+        ax.text(.9, 2.5, f"{width} in.", ha='right', va='center', fontsize='small')
+        ax.text(3, 2.5, f"{question}", ha='center', va='center', fontsize='small')
+    elif width > length:
+        rectangle_points = [(2, 1), (2,4), (4, 4), (4, 1)]
+        ax.text(3, 4.1, f"{length} in.", ha='center', fontsize='small')
+        ax.text(1.9, 2.5, f"{width} in.", ha='right', va='center', fontsize='small')
+        ax.text(3, 2.5, f"{question}", ha='center', va='center', fontsize='small')
+    else:
+        rectangle_points = [(2, 1.5), (2,4), (4, 4), (4, 1.5)]
+        ax.text(3, 4.1, f"{length} in.", ha='center', fontsize='small')
+        ax.text(1.9, 2.75, f"{width} in.", ha='right', va='center', fontsize='small')
+        ax.text(3, 2.75, f"{question}", ha='center', va='center', fontsize='small')
+
+    rectangle = patches.Polygon(rectangle_points, closed=True, linewidth=1, edgecolor='black', facecolor='none')
+    ax.add_patch(rectangle)
+
+    # answer
+    answer = f"1 in\u00B2 : {ratio ** 2} ft\u00B2"
+
+    # wrong answers
+    wrong_answers = [
+                        f"1 in\u00B2 : {ratio} ft\u00B2",
+                        f"{ratio**2} in\u00B2 : 1 ft\u00B2",
+                        f"{length * width} in\u00B2 : {ratio} ft\u00B2"
+                    ]
+    
+    # All answer choices
+    all_answers = wrong_answers + [answer]
+    random.shuffle(all_answers)
+
+    # Find index of correct answer
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    # Plot question
+    problem = f"The diagram below is a scale drawing of a {question}. The ratio of the length in the drawing to that of the actual {question} is 1 inch : {ratio} feet. What is the ratio of the area of the drawing to that of the actual {question}?"
+    addQuestion(fig, problem)
+
+    addStrChoices(fig, all_answers)
+
+    cleanAx(ax)
+
+    return saveQuestion(88, fig, correct_letter, answer)
+
+def generate_triangle_from_angles_sides_question(questions):
+            for _ in range(5):
+                # Question options
+                options = [
+                                'AAA',
+                                'AAS',
+                                'SAS',
+                                'SSA',
+                                'SSS'
+                            ]
+                
+                question = random.choice(options)
+
+                questions += [create_triangle_from_angles_sides_question(question)]
+
+def create_triangle_from_angles_sides_question(question):
+    # Create fig that is 7.7 in. wide and 3 in. tall
+    fig = plt.figure(figsize=(7.7, 1.25))
+
+    # Possibilities
+    # 1. AAA
+        # More than two triangles
+    # 2. AAS/ASA
+        # One triangle
+    # 3. SAS
+        # One triangle
+    # 4. SSA
+        # S1 = opposite S2 = adjacent
+            # if opposite > adjacent
+                # One triangle
+            # if opposite = adjacent * sin(A)
+                # One triangle (right triangle)
+            # if opposite < adjacent * sin(A)
+                # No triangle
+            # if adjacent * sin(A) < a < b
+                # Two triangles
+    # 5. SSS
+        # One triangle
+
+    if question == 'AAA':
+        a = random.randint(10, 18)
+        b = random.randint(4, 36 - a)
+        c = (36 - a - b)
+
+        a = f"m\u2220A = {a * 5}\u00B0"
+        b = f"m\u2220B = {b * 5}\u00B0"
+        c = f"m\u2220C = {c * 5}\u00B0"
+
+        answer = 'More than 2 triangles are possible.'
+    elif question == 'AAS':
+        a = random.randint(10, 16)
+        b = random.randint(4, 36 - a)
+        c = (36 - a - b)
+        
+        angle_A = a * 5
+        angle_B = b * 5
+        
+        side_length = random.randint(3, 12)
+
+        choice = random.choice(['AAS', 'ASA'])
+        if choice == 'AAS':
+            a = f"m\u2220 A = {angle_A}\u00B0"
+            b = f"m\u2220 B = {angle_B}\u00B0"
+            c = f"AC = {side_length}"
+        else:
+            a = f"m\u2220 A = {angle_A}\u00B0"
+            b = f"m\u2220 B = {angle_B}\u00B0"
+            c = f"AB = {side_length}"
+        answer = 'Exactly 1 triangle is possible.'
+    elif question == 'SAS':
+        # Generate two side lengths
+        side_a = random.randint(3, 12)
+        side_b = random.randint(3, 12)
+        
+        # Generate an angle between them (angle C)
+        # Avoiding very small or very large angles
+        c = random.randint(4, 32)  # This gives angles between 20° and 160°
+        angle_C = c * 5
+
+        a = f"AB = {side_a}"
+        b = f"BC = {side_b}"
+        c = f"m\u2220 C = {angle_C}\u00B0"
+        answer = 'Exactly 1 triangle is possible.'
+    elif question == 'SSS':
+        side_a = random.randint(3, 12)
+        side_b = random.randint(3, 12)
+
+        min_side_c = abs(side_a - side_b) + 1  # +1 to avoid degenerate triangles
+        max_side_c = side_a + side_b - 1  # -1 to avoid straight lines
+        side_c = random.randint(min_side_c, max_side_c)
+
+        a = f"AB = {side_a}"
+        b = f"BC = {side_b}"
+        c = f"AC = {side_c}"
+        answer = 'Exactly 1 triangle is possible.'
+    else:
+        a = random.randint(4, 32)  # Between 20° and 160°
+        angle_A = a * 5
+        
+        # Generate the adjacent side
+        side_b = random.randint(5, 15)
+        
+        # Calculate the height (critical value)
+        height = side_b * math.sin(math.radians(angle_A))
+        
+        # Decide which case to generate
+        case = random.choice(["no_triangle", "one_triangle", "right_triangle", "two_triangles"])
+        
+        if case == "no_triangle":
+            # side_a < height (no triangle possible)
+            side_a = max(1, int(height - 1))  # Ensure it's less than height and an integer
+            answer = "No triangle is possible."
+            
+        elif case == "one_triangle":
+            # side_a > side_b (one triangle)
+            side_a = side_b + random.randint(1, 5)
+            answer = "Exactly 1 triangle is possible."
+            
+        elif case == "right_triangle":
+            # We need a special case to get an integer that makes a right triangle
+            # Look for Pythagorean triples or approximate
+            # For simplicity, round to nearest integer (not perfectly accurate but workable)
+            side_a = round(height)
+            answer = "Exactly 1 triangle is possible."
+        elif case == "two_triangles":
+            # height < side_a < side_b (two triangles)
+            # Find a whole number between height and side_b
+            min_a = math.ceil(height + 0.1)
+            max_a = side_b - 1
+            
+            if min_a < max_a:
+                side_a = random.randint(min_a, max_a)
+                answer = "Exactly 2 triangles are possible."
+            else:
+                # If we can't find a valid integer in the range, default to one triangle
+                side_a = side_b + random.randint(1, 5)
+                answer = "Exactly 1 triangle is possible."
+
+        a = f"m\u2220 A = {angle_A}\u00B0"
+        b = f"AB = {side_b}"
+        c = f"BC = {side_a}"
+    
+    # all answers
+    all_answers = [
+                    "Exactly 1 triangle is possible.",
+                    "Exactly 2 triangles are possible.",
+                    "More than 2 triangles are possible.",
+                    "No triangle is possible."    
+                    ]
+    
+    # Find index of correct answer
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    problem = f"Triangle ABC has the following characteristics: {a} , {b} , and {c}. How many different triangles can be drawn with these characteristics?"
+    addQuestion(fig, problem)
+
+    # Add multiple choice options with proper spacing
+    fig.text(0.07, 0.4, f"[A] {all_answers[0]}", fontsize=12, family='serif')
+    fig.text(0.57, 0.4, f"[B] {all_answers[1]}", fontsize=12, family='serif')
+    fig.text(0.07, 0.1, f"[C] {all_answers[2]}", fontsize=12, family='serif')
+    fig.text(0.57, 0.1, f"[D] {all_answers[3]}", fontsize=12, family='serif')
+
+    return saveQuestion(85, fig, correct_letter, answer)
+
+def generate_3d_prism_slice_question(questions):
+    for _ in range(5):
+        # Question options
+        shape = random.choice([
+                "cube",
+                "cone",
+                "cylinder",
+                "hemisphere",
+                "triangular prism",
+                "pyramid",
+                "pyramid",
+                "pyramid",
+                "pyramid"
+            ])
+        slice = random.choice(['vertically', 'horizontally'])
+
+        questions += [create_3d_prism_slice_question(shape, slice)]
+
+def create_3d_prism_slice_question(shape, slice):
+# Create fig that is 7.7 in. wide and 3 in. tall
+    fig = plt.figure(figsize=(7.7, 2))
+    # Add axes that is 0.1 from left, 0.2 from bottom, 0.7 width of fig and .5 heigh of fig
+
+    if shape == 'cube':
+        ax = fig.add_axes([0.1, 0.2, 0.23, .6 ], projection='3d')
+
+        vertices = np.array([
+                                [0, 0, 0],  # vertex 0
+                                [1, 0, 0],  # vertex 1
+                                [1, 1, 0],  # vertex 2
+                                [0, 1, 0],  # vertex 3
+                                [0, 0, 1],  # vertex 4
+                                [1, 0, 1],  # vertex 5
+                                [1, 1, 1],  # vertex 6
+                                [0, 1, 1]   # vertex 7
+                            ])    
+        edges = [
+                    # Bottom face
+                    [vertices[0], vertices[1]],
+                    [vertices[1], vertices[2]],
+                    # Top face
+                    [vertices[4], vertices[5]],
+                    [vertices[5], vertices[6]],
+                    [vertices[6], vertices[7]],
+                    [vertices[7], vertices[4]],
+                    # Connecting edges
+                    [vertices[0], vertices[4]],
+                    [vertices[1], vertices[5]],
+                    [vertices[2], vertices[6]],
+                ]
+        # Plot the edges
+        for edge in edges:
+            x = [edge[0][0], edge[1][0]]
+            y = [edge[0][1], edge[1][1]]
+            z = [edge[0][2], edge[1][2]]
+            ax.plot(x, y, z, 'k-', linewidth=1)  # k- means black solid line
+        # Define which edges should be dashed (hidden edges)
+        dashed_edges = [
+            [vertices[2], vertices[3]],
+            [vertices[3], vertices[0]],
+            [vertices[3], vertices[7]],
+        ]
+        # Plot dashed edges
+        for edge in dashed_edges:
+            x = [edge[0][0], edge[1][0]]
+            y = [edge[0][1], edge[1][1]]
+            z = [edge[0][2], edge[1][2]]
+            ax.plot(x, y, z, 'k:', linewidth=1)  # k-- means black dashed line
+        
+        # Set limits of ax
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_zlim(0, 1)
+
+        ax.set_box_aspect([1, 1, 1])
+        ax.set_zticks([])
+        ax.set_axis_off()
+
+        answer = 'quadrilateral'
+
+    elif shape == 'cone':
+        ax = fig.add_axes([0.1, 0.2, 0.23, .6])
+        # Create an oval (ellipse)
+        center = (0.5, 0.2)
+        width, height = 0.6, 0.2
+        # Create bottom half of ellipse (solid)
+        arc1 = plt.matplotlib.patches.Arc(center, width, height, 
+                                        theta1=0, theta2=180,  # Bottom half
+                                        edgecolor='black', linewidth=1, linestyle=':')
+        ax.add_patch(arc1)
+
+        # Create top half of ellipse (dotted)
+        arc2 = plt.matplotlib.patches.Arc(center, width, height, 
+                                        theta1=180, theta2=360,  # Top half
+                                        edgecolor='black', linewidth=1, linestyle='-')
+        ax.add_patch(arc2)
+        # Create the two lines forming the triangle part
+        apex = (0.5, 0.8)  # Top point
+        left_point = (0.2, 0.2)  # Left edge of oval
+        right_point = (0.8, 0.2)  # Right edge of oval
+
+        # Draw lines
+        ax.plot([left_point[0], apex[0]], [left_point[1], apex[1]], 'k-')  # Left line
+        ax.plot([right_point[0], apex[0]], [right_point[1], apex[1]], 'k-')  # Right line
+
+        # Set limits of ax
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        # Set equal aspect ratio
+        ax.set_aspect('equal')
+
+        if slice == 'vertically':
+            answer = 'triangle'
+        else:
+            answer = 'circle'
+    
+    elif shape == 'hemisphere':
+        ax = fig.add_axes([0.1, 0.2, 0.23, .6])
+        # Create an oval (ellipse)
+        center = (0.5, 0.2)
+        width, height = 0.6, 0.2
+        # Create bottom half of ellipse (solid)
+        arc1 = plt.matplotlib.patches.Arc(center, width, height, 
+                                        theta1=0, theta2=180,  # Bottom half
+                                        edgecolor='black', linewidth=1, linestyle=':')
+        ax.add_patch(arc1)
+
+        # Create top half of ellipse (dotted)
+        arc2 = plt.matplotlib.patches.Arc(center, width, height, 
+                                        theta1=180, theta2=360,  # Top half
+                                        edgecolor='black', linewidth=1, linestyle='-')
+        ax.add_patch(arc2)
+        # Create the two lines forming the triangle part
+        apex = (0.5, 0.8)  # Top point
+        left_point = (0.2, 0.2)  # Left edge of oval
+        right_point = (0.8, 0.2)  # Right edge of oval
+
+        # Draw lines
+        arc3 = plt.matplotlib.patches.Arc(center, width, .6, 
+                                        theta1=0, theta2=180,  # roof
+                                        edgecolor='black', linewidth=1, linestyle='-')
+        ax.add_patch(arc3)
+
+        # Set limits of ax
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        # Set equal aspect ratio
+        ax.set_aspect('equal')
+
+        if slice == 'vertically':
+            answer = 'semicircle'
+        else:
+            answer = 'circle'
+
+    elif shape == 'cylinder':
+        ax = fig.add_axes([0.1, 0.2, 0.23, .6])
+        # Create an oval (ellipse)
+        center = (0.5, 0.2)
+        width, height = 0.6, 0.2
+        # Create bottom half of ellipse (dotted)
+        arc1 = plt.matplotlib.patches.Arc(center, width, height, 
+                                        theta1=0, theta2=180,  # Bottom half
+                                        edgecolor='black', linewidth=1, linestyle=':')
+        ax.add_patch(arc1)
+
+        # Create top half of ellipse (solid)
+        arc2 = plt.matplotlib.patches.Arc(center, width, height, 
+                                        theta1=180, theta2=360,  # Top half
+                                        edgecolor='black', linewidth=1, linestyle='-')
+        ax.add_patch(arc2)
+
+        # Create top half of ellipse (solid)
+        center = (0.5, 0.8)
+
+        arc3 = plt.matplotlib.patches.Arc(center, width, height, 
+                                        theta1=0, theta2=180,  # Bottom half
+                                        edgecolor='black', linewidth=1, linestyle='-')
+        ax.add_patch(arc3)
+
+        # Create top half of ellipse (solid)
+        arc4 = plt.matplotlib.patches.Arc(center, width, height, 
+                                        theta1=180, theta2=360,  # Top half
+                                        edgecolor='black', linewidth=1, linestyle='-')
+        ax.add_patch(arc4)
+
+        ax.plot([.2, .2], [.2, .8], 'k-', linewidth=1)
+        ax.plot([.8, .8], [.2, .8], 'k-', linewidth=1)
+
+        # Set limits of ax
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        # Set equal aspect ratio
+        ax.set_aspect('equal')
+
+        if slice == 'vertically':
+            answer = 'quadrilateral'
+        else:
+            answer = 'circle'
+
+    elif shape == 'triangular prism':
+        ax = fig.add_axes([0.1, 0.2, 0.23, .6 ], projection='3d')
+
+        # Set limits and remove axis
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_zlim(0, 1)
+        ax.set_box_aspect([1, 1, 1])
+        ax.set_axis_off()
+
+        # Define the vertices of the triangular prism (triangle face down)
+        vertices = np.array([
+            [0, 0, 0],    # 0: bottom front left
+            [1, 0, 0],    # 1: bottom front right
+            [0.5, 1, 0],  # 2: bottom back middle
+            [0, 0, 1],    # 3: top front left
+            [1, 0, 1],    # 4: top front right
+            [0.5, 1, 1]   # 5: top back middle
+        ])
+
+        # Visible edges (solid lines)
+        visible_edges = [
+            # Bottom triangle
+            [vertices[0], vertices[1]],
+            # Front vertical edges
+            [vertices[0], vertices[3]],
+            [vertices[1], vertices[4]],
+            # Top triangle
+            [vertices[3], vertices[4]],
+            [vertices[4], vertices[5]],
+            [vertices[5], vertices[3]]
+        ]
+
+        # Plot the visible edges
+        for edge in visible_edges:
+            x = [edge[0][0], edge[1][0]]
+            y = [edge[0][1], edge[1][1]]
+            z = [edge[0][2], edge[1][2]]
+            ax.plot(x, y, z, 'k-', linewidth=1)  # Solid lines
+
+        # Hidden edges (dotted lines)
+        hidden_edges = [
+            # Back vertical edge
+            [vertices[2], vertices[5]],
+            [vertices[1], vertices[2]],
+            [vertices[2], vertices[0]]
+        ]
+
+        # Plot hidden edges
+        for edge in hidden_edges:
+            x = [edge[0][0], edge[1][0]]
+            y = [edge[0][1], edge[1][1]]
+            z = [edge[0][2], edge[1][2]]
+            ax.plot(x, y, z, 'k:', linewidth=1)  # Dotted lines
+
+        ax.view_init(elev=15, azim=-70)
+
+        if slice == 'vertically':
+            answer = 'quadrilateral'
+        else:
+            answer = 'triangle'
+    else:
+        pyramid_sides = random.randint(3,7)
+        ax = fig.add_axes([0.1, 0.2, 0.23, .6 ], projection='3d')
+
+        def pyramid(sides, rotate):
+    
+            # Common settings
+            ax.set_xlim(-1, 1)
+            ax.set_ylim(-1, 1)
+            ax.set_zlim(0, 1.5)
+            ax.set_box_aspect([1, 1, 1])
+            # ax.set_axis_off()
+            
+            # Number of sides in the base
+            n_sides = sides  # 3, 4, 5, 6 sides
+            
+            # Create base vertices
+            theta = np.linspace(0, 2*np.pi, n_sides, endpoint=False)
+            base_x = np.cos(theta)
+            base_y = np.sin(theta)
+            base_z = np.zeros_like(base_x)
+            
+            # Apex of the pyramid
+            apex = np.array([0, 0, 1.2])
+            
+            # Plot the base edges
+            for j in range(n_sides):
+                next_j = (j + 1) % n_sides  # Wrap around for the last point
+                ax.plot([base_x[j], base_x[next_j]],
+                        [base_y[j], base_y[next_j]],
+                        [base_z[j], base_z[next_j]], 'k-', linewidth=1)
+            
+            # Define visible and hidden edges
+            visible_edges = []
+            hidden_edges = []
+            
+            # Determine which edges are visible and which are hidden
+            # This depends on the viewing angle
+            for j in range(n_sides):
+                # Edge from base to apex
+                edge = [
+                    [base_x[j], base_y[j], base_z[j]],
+                    [apex[0], apex[1], apex[2]]
+                ]
+                
+                # For a simple rule: front edges are visible, back edges are hidden
+                # Front half of the base
+                if j <= n_sides//2:
+                    visible_edges.append(edge)
+                else:
+                    hidden_edges.append(edge)
+            
+            # Plot visible edges
+            for edge in visible_edges:
+                ax.plot([edge[0][0], edge[1][0]],
+                        [edge[0][1], edge[1][1]],
+                        [edge[0][2], edge[1][2]], 'k-', linewidth=1)
+            
+            # Plot hidden edges
+            for edge in hidden_edges:
+                ax.plot([edge[0][0], edge[1][0]],
+                        [edge[0][1], edge[1][1]],
+                        [edge[0][2], edge[1][2]], 'k:', linewidth=1)
+            ax.set_zticks([])
+            ax.set_axis_off()
+            ax.view_init(elev=15, azim=rotate)
+
+        if pyramid_sides == 3:
+            pyramid(3, 50)
+            if slice == 'vertically':
+                answer = 'quadrilateral'
+            else:
+                answer = 'triangle'
+
+        elif pyramid_sides == 4:
+            pyramid(4, 60)
+            if slice == 'vertically':
+                answer = 'quadrilateral'
+            else:
+                answer = 'quadrilateral'
+        elif pyramid_sides == 5:
+            pyramid(5, 70)
+            if slice == 'vertically':
+                answer = 'quadrilateral'
+            else:
+                answer = 'pentagon'
+        else:
+            pyramid(6, 90)
+            if slice == 'vertically':
+                answer = 'quadrilateral'
+            else:
+                answer = 'hexagon'
+
+    # all answers
+    all_answers = [
+                    'triangle',
+                    'quadrilateral',
+                    'pentagon',
+                    'hexagon',
+                    'semicircle',
+                    'circle',
+                ]
+    
+    # wrong answers
+    wrong_answers = [option for option in all_answers if option != answer]
+
+    # all answers
+    all_answers = wrong_answers + [answer]
+    random.shuffle(all_answers)
+
+    # Find index of correct answer
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    problem = f"A plane is sliced {slice} through this {shape}. What two-dimensional shape could be formed?"
+    # Plot question
+    fig.text(0.01, .99, problem, 
+                ha='left',
+                va='top',
+                fontsize=12,
+                wrap=True,
+                family='serif'
+            )
+    
+    addStrChoices(fig, all_answers)
+
+    # Add multiple choice options with proper spacing
+    # fig.text(0.10, 0.1, f"[A] {all_answers[0]}", fontsize=12, family='serif')
+    # fig.text(0.35, 0.1, f"[B] {all_answers[1]}", fontsize=12, family='serif')
+    # fig.text(0.60, 0.1, f"[C] {all_answers[2]}", fontsize=12, family='serif')
+    # fig.text(0.85, 0.1, f"[D] {all_answers[3]}", fontsize=12, family='serif')
+
+    cleanAx(ax)
+
+    return saveQuestion(88, fig, correct_letter, answer)
 
 def generate_circle_area_question(questions):
         unique_numbers = random.sample(range(0, 20), 5)
@@ -321,17 +1219,11 @@ def create_circle_area_question(radius):
     # Ensure the aspect ratio is equal so that the circle is not distorted
     ax.set_aspect('equal', adjustable='box')
 
-    # Remove axes ticks and labels for a cleaner look, if desired
-    ax.set_xticks([])
-    ax.set_yticks([])
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-
     pi = 3.14
     
     # Add choices at bottom
     area = pi * radius**2
-    rounded_area = round(area)
+    answer = round(area)
     
     # Generate plausible wrong answers
     wrong_answers = [
@@ -341,32 +1233,21 @@ def create_circle_area_question(radius):
     ]
     
     # All answer choices
-    all_answers = wrong_answers + [rounded_area]
+    all_answers = wrong_answers + [answer]
     random.shuffle(all_answers)
     
     # Find index of correct answer
-    correct_index = all_answers.index(rounded_area)
+    correct_index = all_answers.index(answer)
     correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
         
-    # Right text question and text answers
-    fig.text(.05, .92, f"What is the area of the circle? Use 3.14 for π and round to the nearest whole number.", ha='left', fontsize=12)
-    fig.text(0.12, 0.05, f"[A] {all_answers[0]} ft²", ha='center', fontsize=12)
-    fig.text(0.32, 0.05, f"[B] {all_answers[1]} ft²", ha='center', fontsize=12)
-    fig.text(0.52, 0.05, f"[C] {all_answers[2]} ft²", ha='center', fontsize=12)
-    fig.text(0.72, 0.05, f"[D] {all_answers[3]} ft²", ha='center', fontsize=12)
-
-    # Save to BytesIO
-    img_data = BytesIO()
-    plt.savefig(img_data, format='png', dpi=300)
-    plt.close(fig)
-    img_data.seek(0)
+    problem = f"What is the area of the circle? Use 3.14 for π and round to the nearest whole number."
+    addQuestion(fig, problem)
     
-    return {
-        'id' : 88,
-        'image': img_data,
-        'correct_answer': correct_letter,
-        'correct_value': rounded_area
-    }
+    addIntChoices(fig, all_answers, "ft\u00B2")
+
+    cleanAx(ax)
+
+    return saveQuestion(88, fig, correct_letter, answer)
 
 def generate_diameter_area_question(questions):
     unique_numbers = random.sample(range(0, 10), 5)
@@ -382,86 +1263,26 @@ def create_diameter_area_question(radius):
     fig.patch.set_facecolor('white')
 
     # Add choices at bottom
-    diameter = radius * 2
+    answer = radius * 2
     
     # Generate plausible wrong answers
     wrong_answers = [
         radius,  # Using radius instead of diameter
         radius/2,  # Using circumference
-        round(diameter - random.randint(1, 2))  # Just wrong
+        round(answer - random.randint(1, 2))  # Just wrong
     ]
     
     # All answer choices
-    all_answers = wrong_answers + [diameter]
+    all_answers = wrong_answers + [answer]
     random.shuffle(all_answers)
 
     # Find index of correct answer
-    correct_index = all_answers.index(diameter)
+    correct_index = all_answers.index(answer)
     correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
 
-    # Add question text
-    fig.text(0.05, 0.8, f"The area of a circle is {radius**2}$\\pi$ cm$^2$. What is the diameter of the circle?", ha='left', fontsize=12)
+    problem = f"The area of a circle is {radius**2}$\\pi$ cm$^2$. What is the diameter of the circle?"
+    addQuestion(fig, problem)
 
-    # Add multiple choice options with proper spacing
-    fig.text(0.12, 0.3, f"[A] {all_answers[0]} cm", ha='center', fontsize=12)
-    fig.text(0.32, 0.3, f"[B] {all_answers[1]} cm", ha='center', fontsize=12)
-    fig.text(0.52, 0.3, f"[C] {all_answers[2]} cm", ha='center', fontsize=12)
-    fig.text(0.72, 0.3, f"[D] {all_answers[3]} cm", ha='center', fontsize=12)
+    addIntChoices(fig, all_answers, "cm")
 
-    # fig.savefig('diameter.png')
-    plt.tight_layout(pad=0.1)
-
-    # Save to BytesIO
-    img_data = BytesIO()
-    plt.savefig(img_data, format='png', dpi=300)
-    plt.close(fig)
-    img_data.seek(0)
-    
-    return {
-        'id' : 90,
-        'image': img_data,
-        'correct_answer': correct_letter,
-        'correct_value': diameter
-    }
-
-
-def add_question_to_pdf(pdf, questions, ans_key, packet_id, student_id, width):
-
-    for i, question in enumerate(questions):
-        # Calculate width (8.5 inches minus 1-inch total margins)
-        page_width = pdf.epw
-        margin = .4
-
-        # Check if there's enough space on the current page for the image
-        # Get image dimensions
-        img_width = page_width - .25
-        img = Image.open(question['image'])
-        img_height = (img.height / img.width) * img_width
-        
-        # Add some buffer space for the number and padding
-        total_needed_height = img_height + 0.2
-        
-        # Check if we need to add a page break
-        if pdf.get_y() + total_needed_height > pdf.eph:
-            pdf.add_page()
-            initializePage(pdf, packet_id, student_id, width)
-        
-        # Now add the question number and image together
-        current_y = pdf.get_y()
-
-
-        # Add question number in left margin
-        pdf.set_xy(margin - .05, current_y)  # Position to the left of image
-        pdf.cell(.05, .05, f"{i+1}.")
-        # img = Image.open(question['image'])
-        # width, height = img.size
-        # print(f"Question {i+1} has width {width} and height {height}")
-
-        # Add the complete question image (includes question number, text, diagram, and choices)
-        pdf.set_xy(margin, current_y-0.12)  # Reset x position for image
-        pdf.image(question['image'], x=0.65, w=page_width-.25)
-
-        pdf.set_y(current_y + img_height + 0.35)
-
-        # Construct answer key
-        ans_key[str(i + 1)] = question["correct_answer"]
+    return saveQuestion(90, fig, correct_letter, answer)

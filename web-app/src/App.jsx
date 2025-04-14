@@ -158,12 +158,7 @@ export default function App() {
     async function pdf() {
         const response = await fetch(`${address}/test/pdf`)
 
-        const pdfBlob = await response.blob();
-        const data = URL.createObjectURL(pdfBlob);
-        
-        setTestPDF(data)
-
-        console.log(data)
+        console.log(response)
     }
 
     return (
