@@ -168,14 +168,16 @@ class QuestionFactory:
             # self.pdf = pdf
             self.questions = questions
             self.generators = {
-                '67f02b21cc26b50fa38d3145': generate_circle_area_question,
+                '67f02b21cc26b50fa38d3145' : generate_circle_area_question,
                 '67f1648ccc26b50fa38d3163' : generate_diameter_area_question,
                 '67f684becc26b50fa38d31a4' : generate_dock_scale_question,
                 "67fb3159ee43b6ac0569c485" : generate_ratio_two_lengths_question,
                 "67fbfb4eee43b6ac0569c488" : generate_geometric_scale_drawing_area_question,
                 "67fc451aee43b6ac0569c490" : generate_ratio_scale_drawing_figure_question,
                 "67fca2f6ee43b6ac0569c495" : generate_triangle_from_angles_sides_question,
-                "67fd763cee43b6ac0569c49d" : generate_3d_prism_slice_question
+                "67fd763cee43b6ac0569c49d" : generate_3d_prism_slice_question,
+                "67fd9a8dee43b6ac0569c4a3" : generate_area_circumference_in_pi,
+                "67ff16feee43b6ac0569c4b3" : generate_area_circumference_wp
                 # Add more question handlers
             }
 
@@ -218,7 +220,6 @@ def cleanAx(ax):
     ax.set_yticks([])
     for spine in ax.spines.values():
         spine.set_visible(False)
-
 
 def saveQuestion(id, fig, correct_letter, correct_value):
     img_data = BytesIO()
@@ -626,7 +627,7 @@ def create_ratio_scale_drawing_figure_question(length, width, ratio):
 
     cleanAx(ax)
 
-    return saveQuestion(88, fig, correct_letter, answer)
+    return saveQuestion(84, fig, correct_letter, answer)
 
 def generate_triangle_from_angles_sides_question(questions):
             for _ in range(5):
@@ -1187,7 +1188,273 @@ def create_3d_prism_slice_question(shape, slice):
 
     cleanAx(ax)
 
-    return saveQuestion(88, fig, correct_letter, answer)
+    return saveQuestion(86, fig, correct_letter, answer)
+
+def generate_area_circumference_in_pi(questions):
+    for _ in range(5):
+        # Determine units
+        units = [
+                    ["yards", "yd"],
+                    ["milimeters", "mm"],
+                    ["feet", "ft"],
+                    ["inches", "in"],
+                    ["meters", "m"],
+                    ["centimeters", "cm"]
+                ]
+        # Determine number type
+        number_type = ['fraction', 'decimal', 'whole']
+        # Determine radius or diameter
+        dimensions = ['radius', 'diameter']
+        # Determine question
+        results = ['area', 'circumference']
+
+        unit = random.choice(units)
+        type = random.choice(number_type)
+        dimension = random.choice(dimensions)
+        question = random.choice(results)
+
+        questions += [create_area_circumference_in_pi(unit, type, dimension, question)]
+
+def create_area_circumference_in_pi(unit, type, dimension, question):
+# Create fig that is 7.7 in. wide and 3 in. tall
+    fig = plt.figure(figsize=(7.7, 1.25))
+
+    # 4 scenarios
+        # 1. Given the radius -> find area
+        # 2. Given the diameter -> find area
+        # 3. Given the radius -> find circumference
+        # 4. Given the diameter -> find circumference
+
+    def mixed_to_improper(whole, numerator, denominator):
+        """Convert mixed number to improper fraction"""
+        return whole * denominator + numerator, denominator
+
+    def improper_to_mixed(numerator, denominator):
+        """Convert improper fraction to mixed number"""
+        whole = numerator // denominator
+        numerator = numerator % denominator
+        return whole, numerator, denominator
+
+    if type == 'fraction':
+        if random.random() < 0.5:
+            number = random.randint(1,5)
+        else:
+            number = 0
+        denominator = random.randint(2,5)
+        numerator = random.randint(1,denominator-1)
+
+        problem = fr"The {dimension} of a circle is ${number}\frac{{{numerator}}}{{{denominator}}}$ {unit[0]}. What is the {question} of the circle in terms of π?" if number != 0 else fr"The {dimension} of a circle is $\frac{{{numerator}}}{{{denominator}}}$ {unit[0]}. What is the {question} of the circle in terms of π?"
+        
+        if dimension == 'radius' and question == 'area':
+            # Calculate correct answer (πr²)
+            answer_numerator, answer_denominator = mixed_to_improper(number, numerator, denominator)
+            # Square the radius
+            squared_num = answer_numerator * answer_numerator
+            squared_den = answer_denominator * answer_denominator
+            answer_number, answer_numerator, answer_denominator = improper_to_mixed(squared_num, squared_den)
+            
+            # Format correct answer with π
+            if answer_number == 0:
+                answer = fr"$\frac{{{answer_numerator}}}{{{answer_denominator}}}\pi$ {unit[1]}²"
+            elif squared_num == 0:
+                answer = fr"${answer_number}\pi$ {unit[1]}²"
+            else:
+                answer = fr"${answer_number}\frac{{{answer_numerator}}}{{{answer_denominator}}}\pi$ {unit[1]}²"
+            
+            # Wrong answers
+            # Using circumference formula (2πr) instead of area formula (πr²)
+            wrong1_numerator, wrong1_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong1_number, wrong1_numerator, wrong1_denominator = improper_to_mixed(wrong1_numerator * 2, wrong1_denominator)
+            
+            # Using diameter formula (2r) instead of radius squared (r²)
+            wrong2_numerator, wrong2_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong2_number, wrong2_numerator, wrong2_denominator = improper_to_mixed(wrong2_numerator * 2, wrong2_denominator)
+            
+            # Just squaring the numerator but not the denominator (common mistake)
+            wrong3_numerator, wrong3_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong3_number, wrong3_numerator, wrong3_denominator = improper_to_mixed(wrong3_numerator * wrong3_numerator, wrong3_denominator)
+            
+            wrong_answers = [
+                fr"${number}$ {unit[0]}²" if numerator == 0 else (fr"${wrong1_number}\frac{{{wrong1_numerator}}}{{{wrong1_denominator}}}\pi$ {unit[1]}²" if wrong1_number != 0 else fr"$\frac{{{wrong1_numerator}}}{{{wrong1_denominator}}}\pi$ {unit[1]}²"),
+                
+                fr"${number}$ {unit[0]}²" if numerator == 0 else (fr"${wrong2_number}\frac{{{wrong2_numerator}}}{{{wrong2_denominator}}}\pi$ {unit[1]}²" if wrong2_number != 0 else fr"$\frac{{{wrong2_numerator}}}{{{wrong2_denominator}}}\pi$ {unit[1]}²"),
+                
+                fr"${number}$ {unit[0]}²" if numerator == 0 else (fr"${wrong3_number}\frac{{{wrong3_numerator}}}{{{wrong3_denominator}}}\pi$ {unit[1]}²" if wrong3_number != 0 else fr"$\frac{{{wrong3_numerator}}}{{{wrong3_denominator}}}\pi$ {unit[1]}²"),
+            ]
+        elif dimension == 'radius' and question == 'circumference':
+            answer_numerator, answer_denominator = mixed_to_improper(number, numerator, denominator)
+            answer_number, answer_numerator, answer_denominator = improper_to_mixed(answer_numerator * 2, answer_denominator)
+            if answer_number != 0:
+                answer = fr"${answer_number}\frac{{{answer_numerator}}}{{{answer_denominator}}}$ {unit[0]}"
+            else:
+                answer = fr"$\frac{{{answer_numerator}}}{{{answer_denominator}}}$ {unit[0]}"
+            
+            # Using area formula (πr²) instead of circumference (2πr)
+            wrong3_number, wrong3_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong3_number, wrong3_numerator, wrong3_denominator = improper_to_mixed(wrong3_number * wrong3_number, wrong3_denominator * wrong3_denominator)
+
+            wrong_answers = [
+                                fr"${number}$ {unit[0]}" if numerator == 0 else (fr"$\frac{{{numerator}}}{{{denominator}}}$ {unit[0]}" if number == 0 else fr"${number}\frac{{{numerator}}}{{{denominator}}}$ {unit[0]}"),
+                                fr"${number}$ {unit[0]}" if numerator == 0 else (fr"${3 * number}\frac{{{3 * numerator}}}{{{denominator}}}$ {unit[0]}" if number != 0 else fr"$\frac{{{3 * numerator}}}{{{denominator}}}$ {unit[0]}"),
+                                fr"${number}$ {unit[0]}" if numerator == 0 else (fr"${wrong3_number}\frac{{{wrong3_numerator}}}{{{wrong3_denominator}}}$ {unit[0]}" if number != 0 else fr"$\frac{{{wrong3_numerator}}}{{{wrong3_denominator}}}$ {unit[0]}"),
+                            ]
+        
+        elif dimension == 'diameter' and question == 'area':
+            # Calculate correct answer (π(d/2)² = πd²/4)
+            # First convert to radius (half the diameter)
+            radius_numerator, radius_denominator = mixed_to_improper(number, numerator, denominator)
+            radius_denominator = radius_denominator * 2  # divide by 2 to get radius
+            
+            # Square the radius
+            squared_num = radius_numerator * radius_numerator
+            squared_den = radius_denominator * radius_denominator
+            
+            # Calculate area = πr²
+            answer_number, answer_numerator, answer_denominator = improper_to_mixed(squared_num, squared_den)
+            
+            # Format correct answer with π
+            if answer_numerator == 0:
+                answer = fr"${answer_number}\pi$ {unit[1]}²"
+            elif answer_number == 0:
+                answer = fr"$\frac{{{answer_numerator}}}{{{answer_denominator}}}\pi$ {unit[1]}²"
+            else:
+                answer = fr"${answer_number}\frac{{{answer_numerator}}}{{{answer_denominator}}}\pi$ {unit[1]}²"
+            
+            # WRONG ANSWERS
+            # Wrong 1: Using πd² (forgetting to divide by 4)
+            wrong1_numerator, wrong1_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong1_num = wrong1_numerator * wrong1_numerator
+            wrong1_den = wrong1_denominator * wrong1_denominator
+            wrong1_number, wrong1_numerator, wrong1_denominator = improper_to_mixed(wrong1_num, wrong1_den)
+            
+            # Wrong 2: Using πd (confusing area and circumference formulas)
+            wrong2_numerator, wrong2_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong2_number, wrong2_numerator, wrong2_denominator = improper_to_mixed(wrong2_numerator, wrong2_denominator)
+            
+            # Wrong 3: Using πd/2 (using radius formula but with diameter)
+            wrong3_numerator, wrong3_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong3_denominator = wrong3_denominator * 2  # divide by 2
+            wrong3_number, wrong3_numerator, wrong3_denominator = improper_to_mixed(wrong3_numerator, wrong3_denominator)
+            
+            wrong_answers = [
+                # Using πd² (forgetting to divide by 4)
+                fr"${wrong1_number}\pi$ {unit[1]}²" if wrong1_numerator == 0 else 
+                    (fr"$\frac{{{wrong1_numerator}}}{{{wrong1_denominator}}}\pi$ {unit[1]}²" if wrong1_number == 0 else 
+                    fr"${wrong1_number}\frac{{{wrong1_numerator}}}{{{wrong1_denominator}}}\pi$ {unit[1]}²"),
+                
+                # Using πd (confusing area and circumference formulas)
+                fr"${wrong2_number}\pi$ {unit[1]}²" if wrong2_numerator == 0 else 
+                    (fr"$\frac{{{wrong2_numerator}}}{{{wrong2_denominator}}}\pi$ {unit[1]}²" if wrong2_number == 0 else 
+                    fr"${wrong2_number}\frac{{{wrong2_numerator}}}{{{wrong2_denominator}}}\pi$ {unit[1]}²"),
+                
+                # Using πd/2 (using radius formula but with diameter)
+                fr"${wrong3_number}\pi$ {unit[1]}²" if wrong3_numerator == 0 else 
+                    (fr"$\frac{{{wrong3_numerator}}}{{{wrong3_denominator}}}\pi$ {unit[1]}²" if wrong3_number == 0 else 
+                    fr"${wrong3_number}\frac{{{wrong3_numerator}}}{{{wrong3_denominator}}}\pi$ {unit[1]}²"),
+            ]
+        elif dimension == 'diameter' and question == 'circumference':
+            # Calculate correct answer (πd)
+            diameter_numerator, diameter_denominator = mixed_to_improper(number, numerator, denominator)
+            answer_number, answer_numerator, answer_denominator = improper_to_mixed(diameter_numerator, diameter_denominator)
+            
+            # Format correct answer with π
+            if answer_numerator == 0:
+                answer = fr"${answer_number}\pi$ {unit[0]}"
+            elif answer_number == 0:
+                answer = fr"$\frac{{{answer_numerator}}}{{{answer_denominator}}}\pi$ {unit[0]}"
+            else:
+                answer = fr"${answer_number}\frac{{{answer_numerator}}}{{{answer_denominator}}}\pi$ {unit[0]}"
+            
+            # WRONG ANSWERS
+            # Wrong 1: Using 2πd (applying radius formula to diameter)
+            wrong1_numerator, wrong1_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong1_numerator = wrong1_numerator * 2
+            wrong1_number, wrong1_numerator, wrong1_denominator = improper_to_mixed(wrong1_numerator, wrong1_denominator)
+            
+            # Wrong 2: Using πd/2 (dividing by 2 incorrectly)
+            wrong2_numerator, wrong2_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong2_denominator = wrong2_denominator * 2
+            wrong2_number, wrong2_numerator, wrong2_denominator = improper_to_mixed(wrong2_numerator, wrong2_denominator)
+            
+            # Wrong 3: Using πd² (confusing area and circumference)
+            wrong3_numerator, wrong3_denominator = mixed_to_improper(number, numerator, denominator)
+            wrong3_numerator = wrong3_numerator * wrong3_numerator
+            wrong3_denominator = wrong3_denominator * wrong3_denominator
+            wrong3_number, wrong3_numerator, wrong3_denominator = improper_to_mixed(wrong3_numerator, wrong3_denominator)
+            
+            wrong_answers = [
+                # Using 2πd (applying radius formula to diameter)
+                fr"${wrong1_number}\pi$ {unit[0]}" if wrong1_numerator == 0 else 
+                    (fr"$\frac{{{wrong1_numerator}}}{{{wrong1_denominator}}}\pi$ {unit[0]}" if wrong1_number == 0 else 
+                    fr"${wrong1_number}\frac{{{wrong1_numerator}}}{{{wrong1_denominator}}}\pi$ {unit[0]}"),
+                
+                # Using πd/2 (dividing by 2 incorrectly)
+                fr"${wrong2_number}\pi$ {unit[0]}" if wrong2_numerator == 0 else 
+                    (fr"$\frac{{{wrong2_numerator}}}{{{wrong2_denominator}}}\pi$ {unit[0]}" if wrong2_number == 0 else 
+                    fr"${wrong2_number}\frac{{{wrong2_numerator}}}{{{wrong2_denominator}}}\pi$ {unit[0]}"),
+                
+                # Using πd² (confusing area and circumference)
+                fr"${wrong3_number}\pi$ {unit[0]}" if wrong3_numerator == 0 else 
+                    (fr"$\frac{{{wrong3_numerator}}}{{{wrong3_denominator}}}\pi$ {unit[0]}" if wrong3_number == 0 else 
+                    fr"${wrong3_number}\frac{{{wrong3_numerator}}}{{{wrong3_denominator}}}\pi$ {unit[0]}"),
+            ]
+    else:
+        if type == 'decimal':
+            number = round(random.randint(5,100) * .1, 2)
+        else:
+            number = random.randint(5,30)
+
+        problem = f"The {dimension} of a circle is {number} {unit[0]}. What is the {question} of the circle in terms of π?"
+        if dimension == 'radius' and question == 'area':
+            answer = f"{round(number ** 2, 2)} {unit[1]}²"
+            wrong_answers = [
+                                f"{round(number, 2)}π {unit[1]}²",
+                                f"{round(number * 2, 2)}π {unit[1]}²",
+                                f"{round((number * 2) ** 2, 2)}π {unit[1]}²"
+                            ]
+        elif dimension == 'radius' and question == 'circumference':
+            answer_value = round(number * 2, 2)
+            answer = f"{answer_value}π {unit[1]}"
+            wrong_answers = [
+                                f"{round(number, 2)}π {unit[1]}",
+                                f"{round(number ** 2, 2)}π {unit[1]}",
+                                f"{round(2 * (number ** 2), 2)}π {unit[1]}"
+                            ]
+        elif dimension == 'diameter' and question == 'area':
+            answer_value = round((number ** 2) / 4, 2)
+            answer = f"{answer_value}π {unit[1]}²"
+            wrong_answers = [
+                                f"{round(number ** 2, 2)}π {unit[1]}²",
+                                f"{round(number, 2)}π {unit[1]}²",
+                                f"{round(number / 2, 2)}π {unit[1]}²"
+                            ]
+        elif dimension == 'diameter' and question == 'circumference':
+            # Calculate correct answer (πd)
+            answer_value = round(number, 2)
+            answer = f"{answer_value}π {unit[1]}"
+            wrong_answers = [
+                                f"{round(number * 2, 2)}π {unit[1]}",
+                                f"{round(number / 2, 2)}π {unit[1]}",
+                                f"{round(number ** 2, 2)}π {unit[1]}"
+                            ]
+
+    # All answer choices
+    all_answers = wrong_answers + [answer]
+    random.shuffle(all_answers)
+
+    # Find index of correct answer
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    # Add multiple choice options with proper spacing
+    fig.text(0.12, 0.1, fr"[A] {all_answers[0]}", fontsize=12, family='serif')
+    fig.text(0.32, 0.1, fr"[B] {all_answers[1]}", fontsize=12, family='serif')
+    fig.text(0.52, 0.1, fr"[C] {all_answers[2]}", fontsize=12, family='serif')
+    fig.text(0.72, 0.1, fr"[D] {all_answers[3]}", fontsize=12, family='serif')
+
+    addQuestion(fig, problem)
+    
+    return saveQuestion(87, fig, correct_letter, answer)
 
 def generate_circle_area_question(questions):
         unique_numbers = random.sample(range(0, 20), 5)
@@ -1248,6 +1515,147 @@ def create_circle_area_question(radius):
     cleanAx(ax)
 
     return saveQuestion(88, fig, correct_letter, answer)
+
+def generate_area_circumference_wp(questions):
+        names = [
+                    "Evans",
+                    "Davis",
+                    "Taft",
+                    "Perkins",
+                    "Kim",
+                    "Webb",
+                ]
+
+        units = [
+                    ["yards", "yard", "yd"],
+                    ["feet", "foot", "ft"],
+                    ["inches", "inch", "in"],
+                    ["meters", "meter", "m"],
+                    ["centimeters", "centimeter", "cm"]
+                ]
+
+        for _ in range(5):
+            # Question options
+            # Determine radius or diameter
+            dimensions = ['radius', 'diameter']
+            # Determine question
+            results = ['area', 'circumference']
+
+            name = random.choice(names)
+            unit = random.choice(units)
+            dimension = random.choice(dimensions)
+            question = random.choice(results)
+            value = random.randint(10, 400) * .1
+
+            questions += [create_area_circumference_wp(unit, dimension, question, name, value)]
+
+def create_area_circumference_wp(unit, dimension, question, name, value):
+    # Create fig that is 7.7 in. wide and 3 in. tall
+    fig = plt.figure(figsize=(7.7, 1.25))
+
+    prefix = random.choice(['Mr.', 'Ms.'])
+
+    diameter_area_small = [
+                        f"{prefix} {name} made a circular gameboard with a diameter of {intify(value)} {unit[0]}. A layer of paper is going to cover the gameboard. What is the area of the gameboard? Use 3.14 for π and round to the nearest {unit[1]}.",
+                    ]
+    
+    diameter_area_large = [
+                        f"{prefix} {name} is spraying grass seed across a lawn. The lawn is in a circular shape with a diameter of {intify(value)} {unit[0]}. What is the area of the lawn? Use 3.14 for π and round to the nearest {unit[1]}.",
+                        f"{prefix} {name} is pouring concrete for the floor of a circular building. The planned floor of the building has a diameter of {intify(value)} {unit[0]}. What is the area of the floor? Use 3.14 for π and round to the nearest {unit[1]}."
+                    ]
+
+    radius_circumference_small = [
+                                f"A market scale has a dial with a needle {intify(value)} {unit[0]} long. How far does the tip of the needle move when it makes one complete rotation? Use 3.14 for π and round to the nearest {unit[1]}.",
+                                f"{prefix} {name} is making a circular tablecloth. The tablecloth will be trimmed with a lace strip. Before {prefix} {name} goes to the fabric store, he finds the distance around the edge of the tablecloth. The radius of the tablecloth is {intify(value)} {unit[1]}. What is the distance around the edge of the tablecloth? Use 3.14 for π and round to the nearest inch.",
+                                f"A bathroom scale has a dial with a needle {intify(value)} {unit[0]} long. How far does the tip of the needle move when it makes one complete rotation? Use 3.14 for π and round to the nearest {unit[1]}.",
+                                f"A clock has a minute hand {intify(value)} {unit[0]} long. How far does the tip of the hand move when it makes one complete rotation? Use 3.14 for π and round to the nearest {unit[1]}.",
+                            ]
+    
+    radius_circumference_large = [
+                                f"{prefix} {name} wants to put a string of lights around the outside edge of a Ferris wheel. Before they orders the lights, {prefix} {name} wants to know the distance around the edge of the Ferris wheel. The radius of the wheel is {intify(value)} {unit[1]}. What is the distance around the edge of the Ferris wheel? Use 3.14 for π and round to the nearest {unit[1]}.",
+                                f"{prefix} {name} is putting a tile walkway around the edge of their circular fishpond. The radius of the pond is {intify(value)} {unit[0]}. What is the distance around the pond? Use 3.14 for π and round to the nearest {unit[1]}.",
+                            ]
+    
+    radius_area_small = [
+                            f"{prefix} {name} is making a clock with a radius of {intify(value)} {unit[0]}. The clock will have a layer of protective coating on it's face. What is the area of the clock face? Use 3.14 for π and round to the nearest {unit[1]}"
+                        ]
+    
+    radius_area_large = [
+                            f"A layer of rubber chips is going to be spread over a circular playground. The playground has a radius of {intify(value)} {unit[0]}. What is the area of the playground? Use 3.14 for π and round to the nearest {unit[1]}.",     
+                            f"A sprinkler sprays water a distance of {intify(value)} {unit[0]} in a circular pattern. How much area does the sprinkler cover in one complete rotation? Use 3.14 for π and round to the nearest {unit[1]}.",
+                        ]
+
+    if unit[2] == 'in' or unit[2] == 'cm':
+        if dimension == 'diameter':
+            problem = random.choice(diameter_area_small)
+            answer = f"{round((value/2) ** 2 * 3.14)} {unit[2]}²"
+            wrong_answers = [
+                                f"{round(value)} {unit[2]}²",
+                                f"{round(value ** 2)} {unit[2]}²",
+                                f"{round(value * 3.14)} {unit[2]}²"
+                            ]
+        else:
+            if question == 'circumference':
+                # small radius -> circumference
+                problem = random.choice(radius_circumference_small)
+                answer = f"{round(2 * value * 3.14)} {unit[2]}²"
+                wrong_answers = [
+                    f"{round(value * 3.14)} {unit[2]}²",
+                    f"{round(value ** 2 * 3.14)} {unit[2]}²",
+                    f"{round(2 * value)} {unit[2]}²"
+                ]
+            else:
+                #  small radius -> area
+                problem = random.choice(radius_area_small)
+                answer = f"{round(value ** 2 * 3.14)} {unit[2]}²"
+                wrong_answers = [
+                    f"{round(2 * value * 3.14)} {unit[2]}²",
+                    f"{round((value * 2) ** 2 * 3.14)} {unit[2]}²",
+                    f"{round(value ** 2)} {unit[2]}²"
+                ]
+    else:
+        if dimension == 'diameter':
+            problem = random.choice(diameter_area_large)
+            answer = f"{round((value/2) ** 2 * 3.14)} {unit[2]}²"
+            wrong_answers = [
+                                f"{round(value)} {unit[2]}²",
+                                f"{round(value ** 2)} {unit[2]}²",
+                                f"{round(value ** 2 * 3.14)} {unit[2]}²"
+                            ]
+
+        else:
+            if question == 'circumference':
+                # large radius -> circumference
+                problem = random.choice(radius_circumference_large)
+                answer = f"{round(2 * value * 3.14)} {unit[2]}²"
+                wrong_answers = [
+                    f"{round(value * 3.14)} {unit[2]}²",
+                    f"{round((value * 2) ** 2 * 3.14)} {unit[2]}²",
+                    f"{round(2 * value)} {unit[2]}²"
+                ]
+
+            else:
+                #  large radius -> area
+                problem = random.choice(radius_area_large)
+                answer = f"{round(value ** 2 * 3.14)} {unit[2]}²"
+                wrong_answers = [
+                                    f"{round(value)} {unit[2]}²",
+                                    f"{round(value ** 2)} {unit[2]}²",
+                                    f"{round(value ** 2 * 3.14)} {unit[2]}²"
+                                ]
+
+    # All answer choices
+    all_answers = wrong_answers + [answer]
+    random.shuffle(all_answers)
+        
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    addQuestion(fig, problem)
+
+    addStrChoices(fig, all_answers)
+
+    return saveQuestion(90, fig, correct_letter, answer)
 
 def generate_diameter_area_question(questions):
     unique_numbers = random.sample(range(0, 10), 5)
