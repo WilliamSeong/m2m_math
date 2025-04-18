@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import PDFViewer from "./components/PDFViewer/PdfViewer";
 
-const address = "http://192.168.1.103:9050"
+const address = "http://192.168.1.141:9050"
 
 export default function App() {
 
@@ -197,7 +197,6 @@ export default function App() {
                     ) : (
                         <></>
                     )}
-                    {/* {console.log(currentPackets)} */}
                     {currentPackets.map((packetData, index) => (
                         <div key={index}>
                             <PDFViewer url={packetData[0]} count={index}/>

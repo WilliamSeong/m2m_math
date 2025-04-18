@@ -1,0 +1,91 @@
+.student-name{
+    background-color: pink;
+    font-size: 3rem;
+}
+
+.pdf-viewer{
+    display: flex;
+    background-color: pink;
+}
+
+.submissions-grid{
+    display: grid;
+    grid-template-rows: 1fr * 10;
+}
+
+.submission-header-row{
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 2px solid black;
+    border-bottom: 2px solid black;
+}
+
+.submission-row{
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 2px solid black;
+    /* width: max-content; */
+}
+
+.submission-id{
+    border-right: 2px solid black;
+    border-left: 2px solid black;
+}
+
+.submission-score{
+    border-right: 2px solid black;
+    width: auto;
+}
+
+.objectives-selector{
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    max-height: 20vh;
+    height: 20vh;
+}
+
+.columns{
+    /* border: 2px solid black; */
+    /* background-color: pink; */
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.levels-label,
+.objectives-label,
+.selected-objectives-label{
+    border-bottom: 2px solid black;
+    flex: 0 0 auto;
+}
+
+.levels-content{
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+
+.objectives-content{
+    overflow-y: auto;
+    flex: 1;
+}
+
+.selected-objectives-content{
+    overflow-y: auto;
+    flex: 1;
+}
+
+.table-item{
+    border-bottom: 2px solid black;
+}
+
+.table-item:hover{
+    cursor: pointer;
+    background-color: pink;
+}
+
+.selected-item{
+    border-bottom: 2px solid black;
+    background-color: lightgray;
+}

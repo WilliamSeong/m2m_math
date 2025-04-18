@@ -109,5 +109,91 @@ def getSubmissions(client, packets):
             submissions_list += [[result["datetime"], result["score"]]]
         packets_dict[str(packet["_id"])] = submissions_list
         
-
     return packets_dict
+
+@student_bp.route("/submissions", methods=['POST'])
+def studentSubmissions():
+    data = request.get_json()
+    student_id = data.get("studentId")
+
+    print(f"Fetching student {student_id} submissions")
+
+    try:
+        client = get_client()
+
+        # print(f"Here is the client: {client}")
+
+        submission_results = fetchStudentSubmissions(client, student_id)
+
+        json_data_submissions = dumps(submission_results)
+        # print(json_data_submissions)
+
+        return jsonify({'submissions' : json_data_submissions})
+    except Exception as e:
+        return jsonify({'error' : e})
+
+def fetchStudentSubmissions(client, student_id):
+    # print("Checking packets for student id: ", student_id)
+    student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+    
+    cursor = client["m2m_math_db"]["submissions"].find({"student_id" : student_id_obj})
+    
+    list_cur = list(cursor)
+    return list_cur
+
+@student_bp.route("/levels")
+def getLevels():
+    print(f"Fetching levels")
+    try:
+        client = get_client() # Get the client
+
+        result = fetchLevels(client)
+
+        # print(result)
+    
+        json_data = dumps(result) # json string the list with dumps (Mongo ObjectId won't jsonify)
+
+        # print(json_data)
+
+        return ({"levels" : json_data})
+    
+    except Exception as e:
+        print(f"Levels fetching error: {e}")
+        return jsonify({'error' : e})
+    
+def fetchLevels(client):
+    cursor = client["m2m_math_db"]["levels"].find({})
+    # convert mongo cursor to python list
+    list_cur = list(cursor)
+    return list_cur
+
+@student_bp.route("/level/objectives", methods=['POST'])
+def getLevelObjectives():
+    data = request.get_json()
+    level_id = data.get("levelId")
+
+    print(f"Fetching levels")
+    try:
+        client = get_client() # Get the client
+
+        result = fetchObjectives(client, level_id)
+
+        # print(result)
+    
+        json_data = dumps(result) # json string the list with dumps (Mongo ObjectId won't jsonify)
+
+        # print(json_data)
+
+        return ({"objectives" : json_data})
+    
+    except Exception as e:
+        print(f"Objectives fetching error: {e}")
+        return jsonify({'error' : e})
+    
+def fetchObjectives(client, level_id):
+    level_id_obj = ObjectId(level_id['$oid']) if isinstance(level_id, dict) else ObjectId(level_id)
+
+    cursor = client["m2m_math_db"]["objectives"].find({"level_id" : level_id_obj})
+    # convert mongo cursor to python list
+    list_cur = list(cursor)
+    return list_cur

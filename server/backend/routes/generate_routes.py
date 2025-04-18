@@ -1457,7 +1457,7 @@ def create_area_circumference_in_pi(unit, type, dimension, question):
     return saveQuestion(87, fig, correct_letter, answer)
 
 def generate_circle_area_question(questions):
-        unique_numbers = random.sample(range(0, 20), 5)
+        unique_numbers = random.sample(range(1, 20), 5)
 
         for rad in unique_numbers:
             questions += [create_circle_area_question(rad)]
@@ -1655,10 +1655,10 @@ def create_area_circumference_wp(unit, dimension, question, name, value):
 
     addStrChoices(fig, all_answers)
 
-    return saveQuestion(90, fig, correct_letter, answer)
+    return saveQuestion(89, fig, correct_letter, answer)
 
 def generate_diameter_area_question(questions):
-    unique_numbers = random.sample(range(0, 10), 5)
+    unique_numbers = random.sample(range(1, 10), 5)
 
     for rad in unique_numbers:
         # print(f"Generating question with area {rad * rad}")

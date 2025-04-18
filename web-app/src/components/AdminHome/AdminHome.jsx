@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 import StudentCard from "./../StudentCard/StudentCard";
 import "./AdminHome.css";
 
-
-const address = "http://192.168.86.92:9050"
+const address = "http://192.168.1.103:9050"
 
 export default function AdminHome() {
 
@@ -13,7 +12,6 @@ export default function AdminHome() {
     useEffect(() => {
 
         async function fetchData() {
-
             const response = await fetch(`${address}/student/all`);
 
             const data = await response.json();

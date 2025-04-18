@@ -53,10 +53,7 @@ def pushSubmission(client, packet_id, vis_uri, correct, incorrect, student_id):
         student_id_obj = ObjectId(student_id) if isinstance(student_id, dict) else ObjectId(student_id)
         document = {
                     "packet_id" : packet_id_obj, 
-                    "images" : 
-                        {
-                            "processed" : vis_uri
-                        },
+                    "student_id" : student_id_obj,
                     "score" :
                         {
                             "correct" : correct,
