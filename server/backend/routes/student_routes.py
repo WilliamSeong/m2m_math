@@ -70,7 +70,7 @@ def fetchStudentDetails(client, student_id):
 def getObjectivesList():
     data = request.get_json()
     objective_list = data.get("objectiveIds")
-    print(objective_list)
+    # print(objective_list)
     try:
         client = get_client()
         objectives = fetchObjectivesList(client, objective_list)
@@ -80,7 +80,7 @@ def getObjectivesList():
         return jsonify({'error' : e})
     
 def fetchObjectivesList(client, objective_list):
-    print(objective_list)
+    # print(objective_list)
     object_id_list = [ObjectId(id) for id in objective_list]
     cursor = client["m2m_math_db"]["objectives"].find({"_id" : {"$in" : object_id_list}})
 
@@ -261,6 +261,74 @@ def completeObjectivesInprogress():
 
 def completeObjective(client, student_id, objective_ids):
     student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
-    client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$unset" : {f"objectives_inprogress.{objective_ids}" : True}})
+    # client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$unset" : {f"objectives_inprogress.{objective_ids}" : True}})
     client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$set" : {f"objectives_complete.{objective_ids}" : True}})
 
+@student_bp.route("/objectives/incomplete", methods=['POST'])
+def incompleteObjectivesInprogress():
+    data = request.get_json()
+    objective_id = data.get("objectiveId")
+    student_id = data.get("studentId")
+    
+    try:
+        client = get_client() # Get the client
+
+        incompleteObjective(client, student_id, objective_id)
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"Objectives adding error: {e}")
+        return jsonify({'error' : e})
+
+def incompleteObjective(client, student_id, objective_ids):
+    student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+    client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$unset" : {f"objectives_complete.{objective_ids}" : True}})
+    client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$set" : {f"objectives_inprogress.{objective_ids}" : True}})
+
+@student_bp.route("/objectives/remove", methods=['POST'])
+def removeInprogressObjective():
+    data = request.get_json()
+    objective_id = data.get("objectiveId")
+    student_id = data.get("studentId")
+
+    # print(f"Removing {objective_id}")
+    
+    try:
+        client = get_client() # Get the client
+
+        removeObjective(client, student_id, objective_id)
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"Objectives adding error: {e}")
+        return jsonify({'error' : e})
+
+def removeObjective(client, student_id, objective_ids):
+    student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+    client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$unset" : {f"objectives_inprogress.{objective_ids}" : True}})
+
+@student_bp.route("/packet/remove", methods=['POST'])
+def removePacket():
+    data = request.get_json()
+    packet_id = data.get("packetId")
+    student_id = data.get("studentId")
+
+    # print(f"Removing {packet_id}")
+    
+    try:
+        client = get_client() # Get the client
+
+        removePacket(client, student_id, packet_id)
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"Objectives adding error: {e}")
+        return jsonify({'error' : e})
+
+def removePacket(client, student_id, packet_id):
+    student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+    client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$unset" : {f"packets_inprogress.{packet_id}" : True}})
+    client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$set" : {f"packets_complete.{packet_id}" : True}})

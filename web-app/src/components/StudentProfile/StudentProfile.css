@@ -13,7 +13,7 @@
     width: 20vw;
     aspect-ratio: 4/1;
     margin: 1rem;
-    padding: 1rem;
+    padding: 1.5rem;
     position: relative;
     cursor: pointer;
 }
@@ -23,10 +23,24 @@
     width: 20vw;
     aspect-ratio: 4/1;
     margin: 1rem;
-    padding: 1rem;
+    padding: 1.5rem;
     position: relative;
     cursor: pointer;
 }
+
+.remove-inprogress{
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    border: 1px solid black;
+    background-color: lightblue;
+}
+
+.remove-inprogress:hover{
+    background-color: lightcoral;
+    cursor: pointer;
+}
+
 
 .objective-complete-button{
     position: absolute;
@@ -125,6 +139,7 @@
 
 .complete-table-item{
     background-color: lightgreen;
+    border-bottom: 2px solid black;
 }
 
 .complete-table-item:hover{
@@ -132,7 +147,17 @@
     background-color: green;
 }
 
+.complete-table-item-inprogress{
+    background-color: lightgreen;
+    border-bottom: 2px solid black;
+    cursor: default;
+}
+
 .selected-item{
     border-bottom: 2px solid black;
     background-color: lightgray;
+}
+
+.selected-item:hover{
+    cursor: default;
 }

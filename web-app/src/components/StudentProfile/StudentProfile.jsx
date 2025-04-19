@@ -13,7 +13,7 @@ export default function StudentProfile() {
     const [packets, setPackets] = useState();
     const [submissions, setSubmissions] = useState();
 
-    const [objectivesInprogress, setObjectivesInprogress] = useState();
+    const [objectivesInprogress, setObjectivesInprogress] = useState([]);
     const [levels, setLevels] = useState();
     const [currentObjectives, setCurrentObjectives] = useState([]);
     const [selectedObjectives, setSelectedObjectives] = useState({});
@@ -54,8 +54,19 @@ export default function StudentProfile() {
                 });
 
                 const objectives = await responseObjectives.json();
+
+                // console.log(objectives);
+
+                const sortedObjectives = objectives.sort((a, b) => {
+                    // First compare by level_id
+                    if (a.level_id.$oid !== b.level_id.$oid) {
+                      return a.level_id.$oid - b.level_id.$oid; // Sort by level_id first
+                    }
+                    // If level_id is the same, compare by id_number
+                    return a.id_number - b.id_number;
+                });
                 
-                setObjectivesInprogress(objectives);
+                setObjectivesInprogress(sortedObjectives);
             } catch(e) {
                 console.log("Student Details fetch error: ", e);
             }
@@ -79,7 +90,7 @@ export default function StudentProfile() {
     
                 const packetsArray = JSON.parse(packets);
     
-                // console.log(packetsArray);
+                console.log(packetsArray);
     
                 let urls = [];
         
@@ -99,7 +110,7 @@ export default function StudentProfile() {
     
                     const submissions = packet.submission_details
     
-                    urls = [...urls, [url, submissions]];
+                    urls = [...urls, [packet._id.$oid, url, submissions]];
                 }
                 setPackets(urls);
         
@@ -205,8 +216,12 @@ export default function StudentProfile() {
 
             // console.log(packetsArray);
 
-            setCurrentObjectives(objectivesArray);
-    
+            const sortedObjectives = objectivesArray.sort((a, b) => {
+                return a.id_number - b.id_number;
+            });
+
+            setCurrentObjectives(sortedObjectives);
+
         } catch(e) {
             console.log("Student Details fetch error: ", e);
         }
@@ -253,10 +268,30 @@ export default function StudentProfile() {
     }
 
     async function completeObjective(objective){
-        console.log(objective)
+        // console.log(objective)
         if (window.confirm(`Complete objective ${objective.id_number}: \n ${objective.name}`)) {
             try{
                 const response = await fetch(`${address}/student/objectives/complete`, {
+                    method : "POST",
+                    headers : {
+                        "Content-Type" : "application/json",
+                    },
+                    body : JSON.stringify({
+                        objectiveId : objective._id.$oid,
+                        studentId :student._id.$oid
+                    })
+                });
+            } catch(e) {
+                console.log("Objective adding error", e)
+            }
+        }
+    }
+
+    async function incompleteObjective(objective){
+        // console.log(objective)
+        if (window.confirm(`Mark incomplete objective ${objective.id_number}: \n ${objective.name}`)) {
+            try{
+                const response = await fetch(`${address}/student/objectives/incomplete`, {
                     method : "POST",
                     headers : {
                         "Content-Type" : "application/json",
@@ -282,14 +317,36 @@ export default function StudentProfile() {
         setGenerateObjectives(updatedGenerateObjectives);
     }
 
+    async function removeInprogressObjectie(objective){
+        if (window.confirm(`Remove objective ${objective.id_number}: \n ${objective.name}`)) {
+            try{
+                const response = await fetch(`${address}/student/objectives/remove`, {
+                    method : "POST",
+                    headers : {
+                        "Content-Type" : "application/json",
+                    },
+                    body : JSON.stringify({
+                        objectiveId : objective._id.$oid,
+                        studentId :student._id.$oid
+                    })
+                });
+
+                // const updatedInprogress = { ...objectivesInprogress };
+                // delete updatedInprogress[objective._id.$oid];
+                // setObjectivesInprogress(updatedInprogress);        
+            } catch(e) {
+                console.log("Objective adding error", e)
+            }
+        }
+    }
+
     async function generatePacket(){
 
-        // const objectiveList = Object.values(generateObjectives)
-        console.log(generateObjectives)
-        if (Object.keys(generateObjectives).length != 10) {
-            window.confirm(`SELECT 10 OBJECTIVES`)
-            return;
-        }
+        // console.log(generateObjectives)
+        // if (Object.keys(generateObjectives).length != 10) {
+        //     window.confirm(`SELECT 10 OBJECTIVES`)
+        //     return;
+        // }
 
         const response = await fetch(`${address}/generate`, {
             method : "POST",
@@ -309,7 +366,7 @@ export default function StudentProfile() {
 
     return(
         <div>
-            {student && packets && levels ? (
+            {student && objectivesInprogress && levels ? (
                 <div>
                     <div className="student-name">{student.name}</div>
                     <div className="student-id">{student._id.$oid}</div>
@@ -318,12 +375,24 @@ export default function StudentProfile() {
                             objective._id.$oid in generateObjectives ? (
                             <div key={index} className="selected-objective-item">
                                 <div className="objective-name" onClick={() => degenerateObjective(objective)}>{objective.id_number}. {objective.name}</div>
-                                <div className="objective-complete-button" onClick={() => completeObjective(objective)}>Complete</div>
+                                <div className="remove-inprogress" onClick={() => removeInprogressObjectie(objective)}>Remove</div>
+                                {objective._id.$oid in student.objectives_complete ? (
+                                    <div className="objective-complete-button" onClick={() => incompleteObjective(objective)}>Mark Incomplete</div>
+                                ): (
+                                    <div className="objective-complete-button" onClick={() => completeObjective(objective)}>Mark Complete</div>
+
+                                )}
                             </div>
                             ) : (
                             <div key={index} className="objective-item">
                                 <div className="objective-name" onClick={() => generateObjective(objective)}>{objective.id_number}. {objective.name}</div>
-                                <div className="objective-complete-button" onClick={() => completeObjective(objective)}>Complete</div>
+                                <div className="remove-inprogress" onClick={() => removeInprogressObjectie(objective)}>Remove</div>
+                                {objective._id.$oid in student.objectives_complete ? (
+                                    <div className="objective-complete-button" onClick={() => incompleteObjective(objective)}>Mark Incomplete</div>
+                                ): (
+                                    <div className="objective-complete-button" onClick={() => completeObjective(objective)}>Mark Complete</div>
+
+                                )}
                             </div>
                             )
                         ))}
@@ -334,13 +403,19 @@ export default function StudentProfile() {
                     ) : (
                         <></>
                     )}
-                    <div className="pdf-viewer">
-                        {packets.map((packetData, index) => (
-                            <div key={index}>
-                                <PDFViewer url={packetData[0]} count={index}/>
-                            </div>
-                        ))}
-                    </div>
+                    {packets ? (
+                        <div className="pdf-viewer">
+                            {packets.map((packetData, index) => (
+                                packetData[1] in student.packets_inprogress ? (
+                                    <div key={index}>
+                                        <PDFViewer studentId={student._id.$oid} packetId={packetData[0]} url={packetData[1]} count={index}/>
+                                    </div>
+                                ) : (<div key={index}></div>)
+                            ))}
+                        </div>
+                    ): (
+                        <></>
+                    )}
                     <div className="submissions-grid">
                         <div className="submission-header-row">
                             <div className="submission-id">
@@ -383,13 +458,21 @@ export default function StudentProfile() {
                             <div className="objectives-label">Objectives</div>
                             <div className="objectives-content">
                                 {currentObjectives.map((objective, index) => (
-                                    objective._id.$oid in student.objectives_inprogress || objective._id.$oid in selectedObjectives ? (
-                                        <div className="selected-item" key={index}> {objective.id_number}. {objective.name} </div>
+                                    objective._id.$oid in student.objectives_inprogress ? (
+                                        objective._id.$oid in student.objectives_complete ? (
+                                            <div className="complete-table-item-inprogress" key={index}> {objective.id_number}. {objective.name} </div>
+                                        ): (
+                                            <div className="selected-item" key={index}> {objective.id_number}. {objective.name} </div>
+                                        )
                                     ):(
                                         objective._id.$oid in student.objectives_complete ? (
                                             <div className="complete-table-item" key={index} onClick={() => handleObjectiveSelect(objective)}> {objective.id_number}. {objective.name} </div>
                                         ) : (
-                                            <div className="table-item" key={index} onClick={() => handleObjectiveSelect(objective)}> {objective.id_number}. {objective.name} </div>
+                                            objective._id.$oid in selectedObjectives ? (
+                                                <div className="selected-item" key={index}> {objective.id_number}. {objective.name} </div>
+                                            ) : (
+                                                <div className="table-item" key={index} onClick={() => handleObjectiveSelect(objective)}> {objective.id_number}. {objective.name} </div>
+                                            )
                                         )
                                     )
 

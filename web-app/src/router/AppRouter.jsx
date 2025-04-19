@@ -10,8 +10,8 @@ export default function AppRouter() {
 
     return(
         <Routes>
-            <Route path="/" element={<App />} />
-            <Route path="/admin/home" element={<AdminHome />} />
+            <Route path="/" element={<AdminHome />} />
+            {/* <Route path="/admin/home" element={<AdminHome />} /> */}
             <Route path="/student/profile/:studentId" element={<StudentProfile />} />
             <Route path="/test" element={<Test />} />
         </Routes>

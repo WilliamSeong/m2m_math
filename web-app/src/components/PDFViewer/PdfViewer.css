@@ -8,6 +8,7 @@
     flex-direction: column;
     width: 100%;
     background-color: #5c5c5c;
+    position: relative;
 }
 
 .pdf-link{
@@ -20,6 +21,19 @@
     font-size: 1.5rem;
     color: white;
     text-align: center;
+}
+
+.mark-complete{
+    position: absolute;
+    top: 0;
+    right: 0;
+    border: 1px solid black;
+    background-color: white;
+}
+
+.mark-complete:hover{
+    background-color: lightcoral;
+    cursor: pointer;
 }
 
 .pdf-window{
