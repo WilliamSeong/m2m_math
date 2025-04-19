@@ -54,7 +54,7 @@ def studentDetails():
 
         json_data_details = dumps(details_result)
 
-        return jsonify({'details' : json_data_details})
+        return json_data_details
     except Exception as e:
         return jsonify({'error' : e})
     
@@ -65,6 +65,28 @@ def fetchStudentDetails(client, student_id):
     result = client["m2m_math_db"]["students"].find_one({"_id" : student_id_obj})
 
     return result
+
+@student_bp.route("/objectives", methods=['POST'])
+def getObjectivesList():
+    data = request.get_json()
+    objective_list = data.get("objectiveIds")
+    print(objective_list)
+    try:
+        client = get_client()
+        objectives = fetchObjectivesList(client, objective_list)
+        json_objectives = dumps(objectives)
+        return json_objectives
+    except Exception as e:
+        return jsonify({'error' : e})
+    
+def fetchObjectivesList(client, objective_list):
+    print(objective_list)
+    object_id_list = [ObjectId(id) for id in objective_list]
+    cursor = client["m2m_math_db"]["objectives"].find({"_id" : {"$in" : object_id_list}})
+
+    list_cur = list(cursor)
+    return list_cur
+
     
 @student_bp.route("/packets", methods=['POST'])
 def studentPackets():
@@ -197,3 +219,48 @@ def fetchObjectives(client, level_id):
     # convert mongo cursor to python list
     list_cur = list(cursor)
     return list_cur
+
+@student_bp.route("/objectives/add", methods=['POST'])
+def addObjectivesInprogress():
+    data = request.get_json()
+    objective_ids = data.get("objectiveIds")
+    student_id = data.get("studentId")
+    
+    try:
+        client = get_client() # Get the client
+
+        addObjectives(client, student_id, objective_ids)
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"Objectives adding error: {e}")
+        return jsonify({'error' : e})
+
+def addObjectives(client, student_id, objective_ids):
+    student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+    for id in objective_ids:
+        client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$set" : {f"objectives_inprogress.{id}" : True}})
+
+@student_bp.route("/objectives/complete", methods=['POST'])
+def completeObjectivesInprogress():
+    data = request.get_json()
+    objective_id = data.get("objectiveId")
+    student_id = data.get("studentId")
+    
+    try:
+        client = get_client() # Get the client
+
+        completeObjective(client, student_id, objective_id)
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"Objectives adding error: {e}")
+        return jsonify({'error' : e})
+
+def completeObjective(client, student_id, objective_ids):
+    student_id_obj = ObjectId(student_id['$oid']) if isinstance(student_id, dict) else ObjectId(student_id)
+    client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$unset" : {f"objectives_inprogress.{objective_ids}" : True}})
+    client["m2m_math_db"]["students"].update_one({"_id" : student_id_obj}, {"$set" : {f"objectives_complete.{objective_ids}" : True}})
+

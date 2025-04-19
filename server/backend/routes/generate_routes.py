@@ -34,6 +34,8 @@ def generate():
 
     objective_list = data.get("objectiveList")
     student_id = data.get("studentId")
+    print(f"Objective list for generation: {objective_list}")
+    print(f"Student id for generation: ", student_id)
 
     try:
         client = get_client()
@@ -51,8 +53,9 @@ def generate():
         pdf.set_font("Helvetica", size=12)
 
         initializePage(pdf, packet_id, student_id, usuable_width)
-        for obj in objective_list:
-            pdf.cell(pdf_width_usable, .5, text=obj["name"])
+        for key, value in objective_list.items():
+            print(f"OBJECT: {key}{value}")
+            pdf.cell(pdf_width_usable, .5, text=value)
             pdf.ln(.25)
         pdf.ln(.25)
         pdf.line(.4, pdf.get_y(), 8.5-.4, pdf.get_y())
@@ -63,8 +66,8 @@ def generate():
 
         factory = QuestionFactory(questions)
 
-        for question in objective_list:
-            factory.generate_question(question["id"]["$oid"])
+        for key, value in objective_list.items():
+            factory.generate_question(key)
         
         random.shuffle(questions)
 

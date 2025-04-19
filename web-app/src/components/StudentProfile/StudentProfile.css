@@ -1,11 +1,49 @@
 .student-name{
-    background-color: pink;
+    /* background-color: pink; */
     font-size: 3rem;
+}
+
+.student-objectives{
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.objective-item{
+    background-color: rgb(192, 225, 255);
+    width: 20vw;
+    aspect-ratio: 4/1;
+    margin: 1rem;
+    padding: 1rem;
+    position: relative;
+    cursor: pointer;
+}
+
+.selected-objective-item{
+    background-color: darkgoldenrod;
+    width: 20vw;
+    aspect-ratio: 4/1;
+    margin: 1rem;
+    padding: 1rem;
+    position: relative;
+    cursor: pointer;
+}
+
+.objective-complete-button{
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    border: 1px solid black;
+    background-color: lightblue;
+}
+
+.objective-complete-button:hover{
+    background-color: orange;
+    cursor: pointer;
 }
 
 .pdf-viewer{
     display: flex;
-    background-color: pink;
+    /* background-color: pink; */
 }
 
 .submissions-grid{
@@ -40,8 +78,8 @@
 .objectives-selector{
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    max-height: 20vh;
-    height: 20vh;
+    max-height: 40vh;
+    height: 40vh;
 }
 
 .columns{
@@ -83,6 +121,15 @@
 .table-item:hover{
     cursor: pointer;
     background-color: pink;
+}
+
+.complete-table-item{
+    background-color: lightgreen;
+}
+
+.complete-table-item:hover{
+    cursor: pointer;
+    background-color: green;
 }
 
 .selected-item{

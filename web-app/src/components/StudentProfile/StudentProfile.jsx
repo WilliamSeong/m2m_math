@@ -13,15 +13,19 @@ export default function StudentProfile() {
     const [packets, setPackets] = useState();
     const [submissions, setSubmissions] = useState();
 
+    const [objectivesInprogress, setObjectivesInprogress] = useState();
     const [levels, setLevels] = useState();
     const [currentObjectives, setCurrentObjectives] = useState([]);
     const [selectedObjectives, setSelectedObjectives] = useState({});
+
+    const [generateObjectives, setGenerateObjectives] = useState({});
+    const [generatedPacket, setGeneratedPacket] = useState();
 
     useEffect( () => {
         const fetchDetails = async () => {
 
             try {
-                const response = await fetch(`${address}/student/details`, {
+                const responseDetails = await fetch(`${address}/student/details`, {
                     method : "POST",
                     headers : {
                         "Content-Type" : "application/json",
@@ -31,16 +35,27 @@ export default function StudentProfile() {
                     })
                 });
         
-                const data = await response.json();
+                const data = await responseDetails.json();
         
-                const { details } = data;
+                // console.log(data);
 
-                const resultArray = JSON.parse(details);
+                setStudent(data);
 
-                console.log(resultArray);
-        
-                setStudent(resultArray);
-        
+                const objective_ids = Object.keys(data.objectives_inprogress)
+
+                const responseObjectives = await fetch(`${address}/student/objectives`, {
+                    method : "POST",
+                    headers : {
+                        "Content-Type" : "application/json",
+                    },
+                    body : JSON.stringify({
+                        objectiveIds : objective_ids
+                    })
+                });
+
+                const objectives = await responseObjectives.json();
+                
+                setObjectivesInprogress(objectives);
             } catch(e) {
                 console.log("Student Details fetch error: ", e);
             }
@@ -170,7 +185,7 @@ export default function StudentProfile() {
     }
 
     async function getLevelObjectives(level){
-        console.log(level)
+        // console.log(level)
         try {
             const response = await fetch(`${address}/student/level/objectives`, {
                 method : "POST",
@@ -198,19 +213,98 @@ export default function StudentProfile() {
     }
 
     function handleObjectiveSelect(objective) {
+
         setSelectedObjectives({...selectedObjectives, [objective._id.$oid]: objective});
-        console.log(selectedObjectives);
     }
 
     function handleObjectiveDeselect(objective) {
-        // Create a copy of the current state
-        const updatedObjectives = { ...selectedObjectives };
+        const updatedSelectedObjectives = { ...selectedObjectives };
+        delete updatedSelectedObjectives[objective._id.$oid];
         
-        // Remove the specific key-value pair
-        delete updatedObjectives[objective._id.$oid];
-        
-        // Update state with the new object
-        setSelectedObjectives(updatedObjectives);
+        setSelectedObjectives(updatedSelectedObjectives);
+    }
+
+    async function pushSelectedObjectives(){
+        // console.log(selectedObjectives);
+        const objectives = Object.keys(selectedObjectives);
+        // console.log(objectives);
+        try {
+            const response = await fetch(`${address}/student/objectives/add`, {
+                method : "POST",
+                headers : {
+                    "Content-Type" : "application/json",
+                },
+                body : JSON.stringify({
+                    objectiveIds : objectives,
+                    studentId :student._id.$oid
+                })
+            });
+
+            const values = Object.values(selectedObjectives)
+
+            console.log("selected objective to add to inprogress: ", values)
+            setObjectivesInprogress([...objectivesInprogress, ...values]);
+            console.log("new inprogress objective: ", objectivesInprogress);
+            setSelectedObjectives({})
+
+        } catch(e) {
+            console.log("Objective adding error", e)
+        }
+    }
+
+    async function completeObjective(objective){
+        console.log(objective)
+        if (window.confirm(`Complete objective ${objective.id_number}: \n ${objective.name}`)) {
+            try{
+                const response = await fetch(`${address}/student/objectives/complete`, {
+                    method : "POST",
+                    headers : {
+                        "Content-Type" : "application/json",
+                    },
+                    body : JSON.stringify({
+                        objectiveId : objective._id.$oid,
+                        studentId :student._id.$oid
+                    })
+                });
+            } catch(e) {
+                console.log("Objective adding error", e)
+            }
+        }
+    }
+
+    function generateObjective(objective){
+        setGenerateObjectives({...generateObjectives, [objective._id.$oid] : objective.name})
+    }
+
+    function degenerateObjective(objective) {
+        const updatedGenerateObjectives = { ...generateObjectives };
+        delete updatedGenerateObjectives[objective._id.$oid];
+        setGenerateObjectives(updatedGenerateObjectives);
+    }
+
+    async function generatePacket(){
+
+        // const objectiveList = Object.values(generateObjectives)
+        console.log(generateObjectives)
+        if (Object.keys(generateObjectives).length != 10) {
+            window.confirm(`SELECT 10 OBJECTIVES`)
+            return;
+        }
+
+        const response = await fetch(`${address}/generate`, {
+            method : "POST",
+            headers : {
+                "Content-Type" : "application/json"
+            },
+            body : JSON.stringify({
+                objectiveList : generateObjectives,
+                studentId : student._id
+            })
+        })
+
+        const pdfBlob = await response.blob();
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        setGeneratedPacket(pdfUrl);
     }
 
     return(
@@ -219,14 +313,27 @@ export default function StudentProfile() {
                 <div>
                     <div className="student-name">{student.name}</div>
                     <div className="student-id">{student._id.$oid}</div>
-                    <div className="student-objectives"> 
-                    {Object.entries(student.objectives_inprogress).map(([id, name]) => (
-                        <div key={id} className="objective-item">
-                            <span className="objective-id">{id}: </span>
-                            <span className="objective-name">{name}</span>
-                        </div>
+                    <div className="student-objectives">
+                        {objectivesInprogress.map((objective, index) => (
+                            objective._id.$oid in generateObjectives ? (
+                            <div key={index} className="selected-objective-item">
+                                <div className="objective-name" onClick={() => degenerateObjective(objective)}>{objective.id_number}. {objective.name}</div>
+                                <div className="objective-complete-button" onClick={() => completeObjective(objective)}>Complete</div>
+                            </div>
+                            ) : (
+                            <div key={index} className="objective-item">
+                                <div className="objective-name" onClick={() => generateObjective(objective)}>{objective.id_number}. {objective.name}</div>
+                                <div className="objective-complete-button" onClick={() => completeObjective(objective)}>Complete</div>
+                            </div>
+                            )
                         ))}
                     </div>
+                    <button onClick={generatePacket}>Generate</button>
+                    {generatedPacket ? (
+                        <a href={generatedPacket} target="_blank">Packet</a>
+                    ) : (
+                        <></>
+                    )}
                     <div className="pdf-viewer">
                         {packets.map((packetData, index) => (
                             <div key={index}>
@@ -279,7 +386,11 @@ export default function StudentProfile() {
                                     objective._id.$oid in student.objectives_inprogress || objective._id.$oid in selectedObjectives ? (
                                         <div className="selected-item" key={index}> {objective.id_number}. {objective.name} </div>
                                     ):(
-                                        <div className="table-item" key={index} onClick={() => handleObjectiveSelect(objective)}> {objective.id_number}. {objective.name} </div>
+                                        objective._id.$oid in student.objectives_complete ? (
+                                            <div className="complete-table-item" key={index} onClick={() => handleObjectiveSelect(objective)}> {objective.id_number}. {objective.name} </div>
+                                        ) : (
+                                            <div className="table-item" key={index} onClick={() => handleObjectiveSelect(objective)}> {objective.id_number}. {objective.name} </div>
+                                        )
                                     )
 
                                 ))}
@@ -288,11 +399,16 @@ export default function StudentProfile() {
                         <div className="columns">
                             <div className="selected-objectives-label">Selected Objectives</div>
                             <div className="selected-objectives-content">
-                                {Object.entries(selectedObjectives).map(([id, object]) => (
-                                    <div className="table-item" key={id} onClick={() => handleObjectiveDeselect(object)}> {object.id_number}. {object.name} </div>
+                                {currentObjectives.map((objective, index) => (
+                                    objective._id.$oid in selectedObjectives ? (
+                                        <div className="table-item" key={index} onClick={() => handleObjectiveDeselect(objective)}> {objective.id_number}. {objective.name} </div>
+                                    ) : (<div key={index}></div>)
                                 ))}
                             </div>
                         </div>
+                    </div>
+                    <div>
+                        <button onClick={pushSelectedObjectives}>Select</button>
                     </div>
                 </div>
             ): (
