@@ -366,7 +366,7 @@ export default function StudentProfile() {
 
     return(
         <div>
-            {student && objectivesInprogress && levels ? (
+            {student && objectivesInprogress && levels && submissions ? (
                 <div>
                     <div className="student-name">{student.name}</div>
                     <div className="student-id">{student._id.$oid}</div>
