@@ -406,7 +406,7 @@ export default function StudentProfile() {
                     {packets ? (
                         <div className="pdf-viewer">
                             {packets.map((packetData, index) => (
-                                packetData[1] in student.packets_inprogress ? (
+                                packetData[0] in student.packets_inprogress ? (
                                     <div key={index}>
                                         <PDFViewer studentId={student._id.$oid} packetId={packetData[0]} url={packetData[1]} count={index}/>
                                     </div>
