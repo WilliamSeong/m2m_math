@@ -29,9 +29,14 @@ export default function AdminHome() {
         const response = await fetch(`${address}/generate/test`);
     }
 
+    async function pdf() {
+        const response = await fetch(`${address}/test/pdf`)
+    }
+
+
     return(
         <div className="admin-home-container">
-            <button onClick={testGenerator}>Test Generator</button>
+            <button onClick={pdf}>Test Question</button>
             {students ? (
                 <div className="student-cards">
                     {students.map((student, index) => (

@@ -28,6 +28,7 @@ from backend.registry import generators
 import sys
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
+from questions.grade_1 import q1_10
 from questions.pre_algebra import q81_90
 
 generate_bp = Blueprint("generate", __name__)
@@ -66,11 +67,10 @@ def generate():
         usuable_width = pdf_width - (margin*2)
 
         pdf.add_page()
-        pdf.set_font("Helvetica", size=12)
+        pdf.set_font("Times", size=12)
 
         initializePage(pdf, packet_id, student_id, usuable_width)
         for key, value in objective_list.items():
-            print(f"OBJECT: {key}{value}")
             pdf.cell(pdf_width_usable, .5, text=value)
             pdf.ln(.25)
         pdf.ln(.25)
@@ -142,6 +142,7 @@ def createPacket(client, student_id):
 
 def addPacketContent(client, packet_id, packet, ans_key):
     mongo_packet = Binary(packet)
+    print(f"packet_id: {packet_id}")
     packet_id_obj = ObjectId(packet_id['$oid']) if isinstance(packet_id, dict) else ObjectId(packet_id)
     result = client["m2m_math_db"]["packets"].update_one({"_id" : packet_id_obj}, {'$set' : {"content" : mongo_packet, "answer_key" : ans_key}})
     return result
@@ -172,7 +173,9 @@ def add_question_to_pdf(pdf, questions, ans_key, packet_id, student_id, width):
 
         # Add question number in left margin
         pdf.set_xy(margin - .05, current_y)  # Position to the left of image
+        pdf.set_font('Times', 'B', 13)  # Bold
         pdf.cell(.05, .05, f"{i+1}.")
+        pdf.set_font('Times', '', 12)   # Regular
         
         # Add the complete question image (includes question number, text, diagram, and choices)
         pdf.set_xy(margin, current_y-0.12)  # Reset x position for image

@@ -7,7 +7,6 @@ import matplotlib.patches as patches
 import numpy as np
 from io import BytesIO
 
-
 def intify(value):
     return int(value) if (value == int(value)) else round(value, 2)
 
