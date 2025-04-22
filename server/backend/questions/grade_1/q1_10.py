@@ -135,80 +135,167 @@ def create_grade1_q1(start):
 
 @register('680271ddb5950060f2045787')
 def generate_grade1_q2(questions):
-    for _ in range(1):
+    choices = [
+                [3, 'flowers'],
+                [4, 'flowers'],
+                [10, 'apples'],
+                [11, 'stars'],
+                [11, 'triangles'],
+                [38, 'beads'],
+                [46, 'apples'],
+                [48, 'baseballs'],
+                [105, 'pencils']
+            ]
+    
+    choice = random.sample(choices, 5)
 
-        count = random.randint(10,119)
+    for x in choice:
+        questions += [create_grade1_q2(x)]
 
-        questions += [create_grade1_q2(count)]
-
-def create_grade1_q2(count):
-    fig = plt.figure(figsize=(7.7, 3))
-    # ax = fig.add_axes([0.05, .3, .8, .5 ])
-
-    if count <= 10:
-        images = [
-                    ["./backend/assets/grade1/q2/q2_star.png"],
-                    ["./backend/assets/grade1/q2/q2_triangle.png"],
-                    ["./backend/assets/grade1/q2/q2_flower.png"],
-                    ["./backend/assets/grade1/q2/q2_apple.png"]
-                ]
+def create_grade1_q2(choice):
+    if choice[0] < 15:
+        fig = plt.figure(figsize=(7.7, 2.5))
     else:
-        images = [
-                    ["./backend/assets/grade1/q2/q2_baseball.png", "./backend/assets/grade1/q2/q2_10baseball.png"],
-                    ["./backend/assets/grade1/q2/q2_bead.png", "./backend/assets/grade1/q2/q2_10bead.png"],
-                    ["./backend/assets/grade1/q2/q2_pencil.png", "./backend/assets/grade1/q2/q2_10pencil.png"],
-                ]
+        fig = plt.figure(figsize=(7.7, 3))
+    ax = fig.add_axes([0.05, .3, .7, .5 ])
 
-    if count <= 10:
-        image_path = random.choice(images)
-        single_image = Image.open(image_path)
-        img_array = np.array(single_image)
-        
-        # Place individual images
-        for i in range(count):
-            row = i // 5
-            col = i % 5
-            x = 0.1 + col * 0.15
-            y = 0.6 - row * 0.15
-            ax_img = fig.add_axes([x, y, 0.3, 0.3])
-            ax_img.imshow(img_array)
-            ax_img.axis('off')
-    else:
-        # Get tens and ones
-        count10 = count // 10
-        count1 = count % 10
-        
-        image_paths = random.choice(images)
-        single_path, group10_path = image_paths
-        
-        # Place groups of 10
-        for i in range(count10):
-            group10_image = Image.open(group10_path)
-            group10_array = np.array(group10_image)
-            x = 0.1 + i * 0.2
-            ax_img = fig.add_axes([x, 0.5, 0.3, 0.3])
-            ax_img.imshow(group10_array)
-            ax_img.axis('off')
-        
-        # Place individual items
-        if count1 > 0:
-            single_image = Image.open(single_path)
-            single_array = np.array(single_image)
-            
-            for i in range(count1):
-                x = 0.1 + i * 0.08
-                ax_img = fig.add_axes([x, 0.3, 0.1, 0.1])
-                ax_img.imshow(single_array)
-                ax_img.axis('off')
+    # Problem
+    problem = f"How many {choice[1]} are there?"
 
-    fig.text(0,0,count)
+    fig.text(0.01, 0.99,
+        problem, 
+        ha='left',
+        va='top',
+        fontsize=12,
+        wrap=True,
+        family='serif'
+    )
+
+    image = Image.open(f"./backend/assets/grade1/q2/q2_{choice[0]}_{choice[1]}.png")
+    img_array = np.array(image)
+    ax.imshow(img_array)
+
+    # Answer
+    answer = f"{choice[0]} {choice[1]}"
+
+    # Wrong answers
+    wrong_answers = [
+                        f"{choice[0] + 10} {choice[1]}",
+                        f"{choice[0] + 10 + random.choice([-1,1])} {choice[1]}",
+                        f"{choice[0] + random.choice([-1,1])} {choice[1]}"
+                    ]
+    
+    # All answer
+    all_answers = wrong_answers + [answer]
+    random.shuffle(all_answers)
+    
+    # Find index of correct answer
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+    fig.text(0.12, 0.2, f"[A] {all_answers[0]}", ha='center', va='top', fontsize=12, family='serif')
+    fig.text(0.32, 0.2, f"[B] {all_answers[1]}", ha='center', va='top', fontsize=12, family='serif')
+    fig.text(0.52, 0.2, f"[C] {all_answers[2]}", ha='center', va='top', fontsize=12, family='serif')
+    fig.text(0.72, 0.2, f"[C] {all_answers[3]}", ha='center', va='top', fontsize=12, family='serif')
+
+    cleanAx(ax)
+
+    return saveQuestion(3, fig, correct_letter, answer)
+
+
+
+    
 
 @register('680271ddb5950060f2045788')
 def generate_grade1_q3(questions):
-    print("Hello")
+    for _ in range(5):
 
-def create_grade1_q3():
-    print("Hello")
+        choice = random.choice(['cube', 'pencil'])
+        count = random.randint(12,18)
+
+        questions += [create_grade1_q3(choice, count)]
+
+def create_grade1_q3(choice, count):
+    fig = plt.figure(figsize=(7.7, 3))
+    ax = fig.add_axes([0.05, .3, .9, .5 ])
+
+    ax.set_xlim(0, 17)
+    ax.set_ylim(0, 4)
+
+    # Problem
+    problem = f"Which picture shows {count}?"
+
+    fig.text(0.01, 0.99,
+        problem, 
+        ha='left',
+        va='top',
+        fontsize=12,
+        wrap=True,
+        family='serif'
+    )
+
+    if choice == 'cube':
+        # Answer Choices
+        answer = f"./backend/assets/grade1/q3/q3_cube_{count}.png"
+
+        # Wrong Choices
+        wrong_answers = [
+                            f"./backend/assets/grade1/q3/q3_cube_{count+1}.png",
+                            f"./backend/assets/grade1/q3/q3_cube_{count-1}.png"
+                        ]
+
+        # All answers
+        all_answers = wrong_answers + [answer]
+        random.shuffle(all_answers)
+
+        # Find index of correct answer
+        correct_index = all_answers.index(answer)
+        correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+        image = Image.open(all_answers[0])
+        img_array = np.array(image)
+        ax.imshow(img_array, extent=[1, 5, 0, 4])
+        image = Image.open(all_answers[1])
+        img_array = np.array(image)
+        ax.imshow(img_array, extent=[7, 11, 0, 4])
+        image = Image.open(all_answers[2])
+        img_array = np.array(image)
+        ax.imshow(img_array, extent=[13, 17, 0, 4])  
+
+        ax.text(0.5, 3.5, "[A]", ha='center', va='center', fontsize='large', family='serif')
+        ax.text(6.5, 3.5, "[B]", ha='center', va='center', fontsize='large', family='serif')
+        ax.text(12.5, 3.5, "[C]", ha='center', va='center', fontsize='large', family='serif')
+    else:
+        # Answer Choices
+        answer = f"./backend/assets/grade1/q3/q3_pencil_{count}.png"
+
+        # Wrong Choices
+        wrong_answers = [
+                            f"./backend/assets/grade1/q3/q3_pencil_{count+random.choice([-1, 1])}.png",
+                        ]
+
+        # All answers
+        all_answers = wrong_answers + [answer]
+        random.shuffle(all_answers)
+
+        # Find index of correct answer
+        correct_index = all_answers.index(answer)
+        correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+
+        image = Image.open(all_answers[0])
+        img_array = np.array(image)
+        ax.imshow(img_array, extent=[7, 11, 0, 4])
+        image = Image.open(all_answers[1])
+        img_array = np.array(image)
+        ax.imshow(img_array, extent=[13, 17, 0, 4])  
+
+        ax.text(6.5, 3.5, "[A]", ha='center', va='center', fontsize='large', family='serif')
+        ax.text(12.5, 3.5, "[B]", ha='center', va='center', fontsize='large', family='serif')
+    
+    cleanAx(ax)
+
+    return saveQuestion(3, fig, correct_letter, answer)
+
 
 @register('680271ddb5950060f2045789')
 def generate_grade1_q4(questions):

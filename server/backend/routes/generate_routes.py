@@ -28,7 +28,7 @@ from backend.registry import generators
 import sys
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
-from questions.grade_1 import q1_10
+from questions.grade_1 import q1_10, q11_20
 from questions.pre_algebra import q81_90
 
 generate_bp = Blueprint("generate", __name__)

@@ -7,6 +7,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.lines import Line2D
+from matplotlib.patches import Polygon
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
@@ -36,12 +38,13 @@ def pdf():
         pdf.set_font("Arial", size=12)
         pdf.cell(200, 10, txt="Test Packet!", align="C")
 
+        questions = []
+
         for _ in range(1):
+            a = random.randint(1,9)
+            b = random.randint(1,9)
+            questions += [create_question(a, b)]
 
-            ten = random.randint(2,9)
-            one = random.randint(2,9)
-
-            create_question(ten, one)
         return jsonify({'success' : True})
 
     except Exception as e:
@@ -57,56 +60,56 @@ def cleanAx(ax):
         spine.set_visible(False)
 
 
-def create_question(ten, one):
-
-    fig = plt.figure(figsize=(7.7, .25))
+def create_question(a, b):
+    fig = plt.figure(figsize=(7.7, .75))
     ax = fig.add_axes([0.05, .3, .8, .5 ])
 
     # Problem
-    ten_word = 'ten' if ten == 1 else 'tens'
-    one_word = 'one' if one == 1 else 'ones'
-    minus_ten_word = 'ten' if ten - 1 == 1 else 'tens'
-
-    choice = random.randint(0,1)
+    word_problems = [
+                        [f"{a} kittens were in a room. {b} more kittens were added. How many kittens are there now?", 'kittens', 'kitten'],
+                        [f"Camilla had {a} toy cars. Ann gave her {b} more. How many toy cars does Camilla have now?", 'toy cars', 'toy car'],
+                        [f"A jar had {a} pins in it. Lucy added {b} more. How many pins are in the jar now?", 'pins', 'pin'],
+                        [f"{a} dog is in a park. {b} more dogs come over. How many dogs are in the park now?", 'dogs', 'dog'],
+                        [f"There were {a} pencils in the box. A boy put in {b} more pencils. How many pencils are in the box now?", 'pencils', 'pencil']
+                    ]
     
-    questions = [f"{ten} {ten_word} + {one} {one_word} = _____ + {one+10} ones", f"{ten} {ten_word} + {one} {one_word} = {ten-1} {minus_ten_word} + _____"]
+    choice = random.choice(word_problems)
 
-    # Answer choices
-    if choice == 0:
-        answer = f"{ten - 1} {minus_ten_word}"
-        wrong_answers = [
-                            f"{ten + 10} {minus_ten_word}",
-                            f"{ten + one} {minus_ten_word}",
-                            f"{ten - 1 + random.randint(1,2)} {minus_ten_word}"
-                        ]
-    else:
-        answer = f"{one+10} ones"
-        wrong_answers = [
-                            f"{one+1} ones",
-                            f"{one+11} ones",
-                            f"{one - 1} {'one' if one-1 == 1 else 'ones'}"
-                        ]
+    problem = choice[0]
 
-    all_answers = wrong_answers + [answer]
-    random.shuffle(all_answers)
-        
-    # # Find index of correct answer
-    # correct_index = all_answers.index(answer)
-    # correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
-
-    fig.text(0.01, 0.85,
-            questions[choice], 
+    fig.text(0.01, 0.99,
+            problem, 
             ha='left',
             va='top',
             fontsize=12,
             wrap=True,
             family='serif'
         )
+
+    # Answer
+    answer = f"{a + b} {choice[1]}"
+
+    # Wrong answers
+    wrong_answers = [
+                        f"{a+b-1} {choice[2] if a+b-1 == 1 else choice[1]} ",
+                        f"{a + b + 1} {choice[1]}",
+                        f"{a + b + 2} {choice[1]}",
+                    ]
     
-    fig.text(0.45, 0.85, f"[A] {all_answers[0]}", ha='center', va='top', fontsize=12, family='serif')
-    fig.text(0.6, 0.85, f"[B] {all_answers[1]}", ha='center', va='top', fontsize=12, family='serif')
-    fig.text(0.75, 0.85, f"[C] {all_answers[2]}", ha='center', va='top', fontsize=12, family='serif')
-    fig.text(0.9, 0.85, f"[C] {all_answers[3]}", ha='center', va='top', fontsize=12, family='serif')
+    # All answers
+    all_answers = wrong_answers + [answer]
+    random.shuffle(all_answers)
+        
+    # Find index of correct answer
+    correct_index = all_answers.index(answer)
+    correct_letter = chr(65 + correct_index)  # Convert to A, B, C, D
+    
+    fig.text(0.2, 0.2, f"[A] {all_answers[0]}", ha='center', va='bottom', fontsize=12, family='serif')
+    fig.text(0.4, 0.2, f"[B] {all_answers[1]}", ha='center', va='bottom', fontsize=12, family='serif')
+    fig.text(0.6, 0.2, f"[C] {all_answers[2]}", ha='center', va='bottom', fontsize=12, family='serif')
+    fig.text(0.8, 0.2, f"[D] {all_answers[3]}", ha='center', va='bottom', fontsize=12, family='serif')
+
+    # ax.grid(True, linestyle='--', alpha=0.7)
 
     # Clean up
     cleanAx(ax)
